@@ -1,0 +1,163 @@
+const asyncHandler = require('express-async-handler');
+const Product = require('../models/Product');
+
+// @desc    Fetch all products
+// @route   GET /api/products
+// @access  Public
+const getProducts = asyncHandler(async (req, res) => {
+  const pageSize = 12;
+  const page = Number(req.query.pageNumber) || 1;
+
+  const keyword = req.query.keyword
+    ? {
+        name: {
+          $regex: req.query.keyword,
+          $options: 'i',
+        },
+      }
+    : {};
+
+  const count = await Product.countDocuments({ ...keyword });
+  const products = await Product.find({ ...keyword })
+    .limit(pageSize)
+    .skip(pageSize * (page - 1));
+
+  res.json({
+    products,
+    page,
+    pages: Math.ceil(count / pageSize),
+    total: count,
+  });
+});
+
+// @desc    Search products by keyword
+// @route   GET /api/products/search
+// @access  Public
+const searchProductsByKeyword = asyncHandler(async (req, res) => {
+  const keyword = req.query.keyword || '';
+  const limit = Number(req.query.limit) || 10;
+
+  if (keyword.trim() === '') {
+    return res.json({ products: [], total: 0 });
+  }
+
+  const searchQuery = {
+    $or: [
+      { title: { $regex: keyword, $options: 'i' } },
+      { description: { $regex: keyword, $options: 'i' } },
+      { 'brand.name': { $regex: keyword, $options: 'i' } },
+    ],
+  };
+
+  const count = await Product.countDocuments(searchQuery);
+  const products = await Product.find(searchQuery).limit(limit);
+
+  res.json({ products, total: count });
+});
+
+// @desc    Fetch single product
+// @route   GET /api/products/:id
+// @access  Public
+const getProductById = asyncHandler(async (req, res) => {
+  // Extract the ID from the slug-id format
+  const urlParts = req.params.id.split('-');
+  const productId = urlParts[urlParts.length - 1];
+
+  // Find the product by the extracted ID
+  const product = await Product.findOne({ id: productId });
+
+  if (product) {
+    res.json(product);
+  } else {
+    res.status(404);
+    throw new Error('Product not found');
+  }
+});
+
+// @desc    Fetch products by category
+// @route   GET /api/products/category/:slug
+// @access  Public
+const getProductsByCategory = asyncHandler(async (req, res) => {
+  const pageSize = 12;
+  const page = Number(req.query.pageNumber) || 1;
+
+  const categorySlug = req.params.slug;
+
+  // Special case for "all" category - fetch uncategorized products
+  const filter =
+    categorySlug === 'all'
+      ? { 'categories.name': 'Uncategorized' }
+      : { 'categories.slug': categorySlug };
+
+  const count = await Product.countDocuments(filter);
+
+  // For "all" category, sort alphabetically by name
+  const sortOption = categorySlug === 'all' ? { name: 1 } : {};
+
+  const products = await Product.find(filter)
+    .sort(sortOption)
+    .limit(pageSize)
+    .skip(pageSize * (page - 1));
+
+  res.json({
+    products,
+    page,
+    pages: Math.ceil(count / pageSize),
+    total: count,
+    category: categorySlug,
+  });
+});
+
+// @desc    Fetch featured products
+// @route   GET /api/products/featured
+// @access  Public
+const getFeaturedProducts = asyncHandler(async (req, res) => {
+  const limit = Number(req.query.limit) || 8;
+
+  const products = await Product.find({ featured: true }).limit(limit);
+
+  res.json(products);
+});
+
+// @desc    Fetch best selling products
+// @route   GET /api/products/bestsellers
+// @access  Public
+const getBestSellerProducts = asyncHandler(async (req, res) => {
+  const limit = Number(req.query.limit) || 5;
+
+  const products = await Product.find({})
+    .sort({ total_sales: -1 })
+    .limit(limit);
+
+  res.json(products);
+});
+
+// @desc    Get all product categories
+// @route   GET /api/products/categories
+// @access  Public
+const getProductCategories = asyncHandler(async (req, res) => {
+  // Use aggregation to get unique categories
+  const categories = await Product.aggregate([
+    { $unwind: '$categories' },
+    {
+      $group: {
+        _id: '$categories.id',
+        name: { $first: '$categories.name' },
+        slug: { $first: '$categories.slug' },
+      },
+    },
+    { $sort: { name: 1 } },
+  ]);
+
+  res.json(categories);
+});
+
+module.exports = {
+  getProducts,
+  getProductById,
+  getProductsByCategory,
+  getFeaturedProducts,
+  getBestSellerProducts,
+  getProductCategories,
+  searchProductsByKeyword,
+};
