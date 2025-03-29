@@ -103,20 +103,20 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-  // Skip hashing if this flag is set or if password hasn't changed
-  if (this.$skipValidation || !this.isModified('password')) {
-    return next();
-  }
+// userSchema.pre('save', async function (next) {
+//   // Skip hashing if this flag is set or if password hasn't changed
+//   if (this.$skipValidation || !this.isModified('password')) {
+//     return next();
+//   }
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
+//   try {
+//     const salt = await bcrypt.genSalt(10);
+//     this.password = await bcrypt.hash(this.password, salt);
+//     next();
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function (candidatePassword) {
@@ -124,10 +124,7 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
     console.log('Comparing passwords');
     console.log('Candidate password:', candidatePassword);
     // Only log a portion of the hash for security
-    console.log(
-      'Stored password hash (first 10 chars):',
-      this.password.substring(0, 10) + '...'
-    );
+    console.log('Stored password hash (first 10 chars):', this.password);
 
     // Use bcrypt.compare which handles the salt extraction and comparison
     const result = await bcrypt.compare(candidatePassword, this.password);
