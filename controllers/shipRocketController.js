@@ -72,7 +72,7 @@ exports.createOrder = async (orderData) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `${token}`,
         },
         body: JSON.stringify(orderData),
       }
@@ -115,7 +115,7 @@ exports.assignAWB = async (shipmentId, courierId) => {
       {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `${token}`,
         },
       }
     );
@@ -149,7 +149,7 @@ exports.getAvailableCouriers = async (
           cod: cod ? 1 : 0,
         },
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `${token}`,
         },
       }
     );
@@ -172,7 +172,7 @@ exports.trackShipment = async (awbCode) => {
       `${process.env.SHIPROCKET_API_URL}/courier/track/awb/${awbCode}`,
       {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `${token}`,
         },
       }
     );

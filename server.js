@@ -11,10 +11,12 @@ const wishlistRoutes = require('./routes/wishlistRoutes');
 const userRoutes = require('./routes/userRoutes');
 const unprocessedOrderRoutes = require('./routes/unprocessedOrderRoutes');
 const finalOrderRoutes = require('./routes/finalOrderRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
 const {
   scheduleTokenRefresh,
   scheduleFailedIntegrationCheck,
 } = require('./utils/scheduler');
+const cookieParser = require('cookie-parser');
 
 dotenv.config();
 
@@ -24,6 +26,13 @@ connectDB();
 const app = express();
 
 // Middleware
+app.use(cookieParser());
+// app.use(
+//   cors({
+//     origin: process.env.FRONTEND_URL,
+//     credentials: true,
+//   })
+// );
 app.use(cors());
 app.use(express.json());
 
@@ -37,7 +46,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/unprocessed-orders', unprocessedOrderRoutes);
 app.use('/api/final-orders', finalOrderRoutes);
 app.use('/api/shiprocket', require('./routes/shipRocketRoutes'));
-
+app.use('/api/admin/auth', require('./routes/adminAuthRoutes'));
+app.use('/api', reviewRoutes);
 // Base route
 app.get('/', (req, res) => {
   res.send('API is running...');

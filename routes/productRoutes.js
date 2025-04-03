@@ -6,6 +6,7 @@ const {
   getProductsByCategory,
   getFeaturedProducts,
   getBestSellerProducts,
+  getVariableProducts,
   getProductCategories,
   searchProductsByKeyword,
 } = require('../controllers/productController');
@@ -18,6 +19,9 @@ router.route('/featured').get(getFeaturedProducts);
 
 // Get best selling products
 router.route('/bestsellers').get(getBestSellerProducts);
+
+// Get variable products
+router.route('/type/variable').get(getVariableProducts);
 
 // Get all product categories
 router.route('/categories').get(getProductCategories);

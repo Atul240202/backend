@@ -10,10 +10,20 @@ const getProducts = asyncHandler(async (req, res) => {
 
   const keyword = req.query.keyword
     ? {
-        name: {
-          $regex: req.query.keyword,
-          $options: 'i',
-        },
+        $or: [
+          {
+            name: {
+              $regex: req.query.keyword,
+              $options: 'i',
+            },
+          },
+          {
+            description: {
+              $regex: req.query.keyword,
+              $options: 'i',
+            },
+          },
+        ],
       }
     : {};
 
@@ -132,6 +142,14 @@ const getBestSellerProducts = asyncHandler(async (req, res) => {
   res.json(products);
 });
 
+// @desc    Fetch products whose type is variable
+// @route   GET /api/products/featured
+// @access  Public
+const getVariableProducts = asyncHandler(async (req, res) => {
+  const products = await Product.find({ type: 'variable' });
+  res.json(products);
+});
+
 // @desc    Get all product categories
 // @route   GET /api/products/categories
 // @access  Public
@@ -158,6 +176,7 @@ module.exports = {
   getProductsByCategory,
   getFeaturedProducts,
   getBestSellerProducts,
+  getVariableProducts,
   getProductCategories,
   searchProductsByKeyword,
 };
