@@ -262,6 +262,7 @@ exports.updateUserAddress = asyncHandler(async (req, res) => {
         isDefault !== undefined
           ? isDefault
           : user.addresses[addressIndex].isDefault,
+      id: addressId,
     };
 
     // If this is set as default, update other addresses of the same type

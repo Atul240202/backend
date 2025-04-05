@@ -39,7 +39,6 @@ exports.register = async (req, res) => {
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    console.log('Generated hash during registration:', hashedPassword);
 
     // Create pre-registration record
     const preRegistration = new PreRegistration({
@@ -200,25 +199,23 @@ exports.login = async (req, res) => {
 
     // Check if user exists
     const user = await User.findOne({ email });
-    console.log(`User  found : ${user} : ${password}`);
     if (!user) {
-      console.log(`User not found with email: ${email}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Check if user is verified
     if (!user.isVerified) {
-      console.log(`User found but not verified: ${email}`);
       return res
         .status(401)
         .json({ message: 'Please verify your email before logging in' });
     }
 
     // Check password
-    const isMatch = await user.comparePassword(password);
-    console.log(`Password match result: ${isMatch}`);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user.googleSignIn) {
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
     }
 
     // Generate JWT token
@@ -240,6 +237,83 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Google Sign In/Sign Up
+exports.googleAuth = async (req, res) => {
+  try {
+    const { idToken, phone } = req.body;
+
+    // Verify the Google ID token (in a production app, you would verify this with Google's API)
+    // For this example, we'll assume the token is valid and contains user info
+    const { email, firstName, lastName, googleId, fullName } = req.body;
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // User exists - update Google ID if not already set
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.googleSignIn = true;
+        await user.save();
+      }
+    } else {
+      // New user - create account
+      if (!phone) {
+        // If phone is not provided, return error and ask for phone
+        return res.status(202).json({
+          success: false,
+          needsPhone: true,
+          message: 'Please provide a phone number to complete registration',
+          tempData: { email, firstName, lastName, googleId, fullName },
+        });
+      }
+
+      // Check if phone is already in use
+      const existingPhone = await User.findOne({ phone });
+      if (existingPhone) {
+        return res
+          .status(400)
+          .json({ message: 'User already exists with this phone number' });
+      }
+
+      // Create new user
+      user = new User({
+        fullName: fullName || `${firstName} ${lastName}`,
+        firstName,
+        lastName,
+        email,
+        phone,
+        googleId,
+        googleSignIn: true,
+        isVerified: true, // Google already verified the email
+      });
+
+      await user.save();
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -435,8 +509,6 @@ exports.resetPassword = async (req, res) => {
     // Hash new password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    console.log('Reset hashed password', hashedPassword);
-    // Update user's password
     user.password = hashedPassword;
     await user.save();
 

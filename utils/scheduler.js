@@ -2,14 +2,12 @@
 const cron = require('node-cron');
 const shipRocketController = require('../controllers/shipRocketController');
 
-// Schedule token refresh every 9 days (before the 10-day expiry)
+// Schedule token refresh every 5 days (before the 10-day expiry)
 const scheduleTokenRefresh = () => {
-  // Run at midnight every 9 days
-  cron.schedule('0 0 */9 * *', async () => {
+  // Run at midnight everyday
+  cron.schedule('0 0 * * *', async () => {
     try {
-      console.log('Refreshing ShipRocket token...');
       await shipRocketController.generateNewToken();
-      console.log('ShipRocket token refreshed successfully');
     } catch (error) {
       console.error('Error refreshing ShipRocket token:', error);
     }
@@ -18,11 +16,9 @@ const scheduleTokenRefresh = () => {
 
 // Schedule check for failed ShipRocket integrations
 const scheduleFailedIntegrationCheck = () => {
-  // Run every 3 hours
-  cron.schedule('0 */1 * * *', async () => {
+  // Run every 1 hours
+  cron.schedule('0 0 * * *', async () => {
     try {
-      console.log('Checking for failed ShipRocket integrations...');
-
       const FinalOrder = require('../models/FinalOrder');
       const shipRocketController = require('../controllers/shipRocketController');
 
@@ -32,10 +28,6 @@ const scheduleFailedIntegrationCheck = () => {
         createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }, // Last 7 days
       });
 
-      console.log(
-        `Found ${failedOrders.length} orders with failed ShipRocket integration`
-      );
-
       // Process each failed order
       for (const orderData of failedOrders) {
         try {
@@ -43,9 +35,7 @@ const scheduleFailedIntegrationCheck = () => {
           const shipRocketOrderData = {
             order_id: orderData.order_id,
             order_date: orderData.order_date,
-            pickup_location:
-              orderData.pickup_location ||
-              'B - 80, B Block, Sector 5, , Gautam Buddha Nagar, Uttar Pradesh, 201301',
+            pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || 'Home',
             channel_id: orderData.channel_id || '2970164',
             comment: orderData.comment || 'Order created via API',
             reseller_name: orderData.comment || '',
@@ -62,7 +52,7 @@ const scheduleFailedIntegrationCheck = () => {
             billing_email: orderData.billing_email,
             billing_phone: orderData.billing_phone,
             billing_alternate_phone: orderData.billing_alternate_phone || '',
-            shipping_is_billing: orderData.shipping_is_billing || 'true',
+            shipping_is_billing: orderData.shipping_is_billing || true,
             shipping_customer_name: orderData.shipping_customer_name,
             shipping_last_name: orderData.shipping_last_name,
             shipping_address: orderData.shipping_address,
@@ -88,7 +78,7 @@ const scheduleFailedIntegrationCheck = () => {
             ewaybill_no: orderData.ewaybill_no || '',
             customer_gstin: orderData.customer_gstin || '',
             invoice_number: orderData.invoice_number || '',
-            order_type: orderData.order_type || 'Retail',
+            order_type: orderData.order_type || 'ESSENTIALS',
           };
 
           // Create ShipRocket order
@@ -103,15 +93,10 @@ const scheduleFailedIntegrationCheck = () => {
           // Save updated order
           await order.save();
 
-          console.log(
-            `Successfully created ShipRocket order for order ID: ${order.order_id}`
-          );
-
           // Get available couriers for automatic selection
           const availableCouriers =
             await shipRocketController.getAvailableCouriers(
-              order.pickup_location_pincode ||
-                process.env.SHIPROCKET_PICKUP_PINCODE,
+              process.env.SHIPROCKET_PICKUP_PINCODE,
               order.shipping_pincode,
               order.weight || '0.5',
               order.payment_method === 'COD'
@@ -142,10 +127,6 @@ const scheduleFailedIntegrationCheck = () => {
 
             // Save updated order
             await order.save();
-
-            console.log(
-              `Successfully assigned AWB for order ID: ${order.order_id}`
-            );
           }
         } catch (error) {
           console.error(

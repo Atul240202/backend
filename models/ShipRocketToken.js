@@ -1,4 +1,3 @@
-// Backend/models/ShipRocketToken.js
 const mongoose = require('mongoose');
 
 const shipRocketTokenSchema = new mongoose.Schema(

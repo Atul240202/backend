@@ -27,7 +27,8 @@ exports.generateNewToken = async () => {
   try {
     // Deactivate all existing tokens
     await ShipRocketToken.updateMany({}, { isActive: false });
-
+    // Delete all existing tokens
+    await ShipRocketToken.deleteMany({});
     // Make API request to generate new token
     const response = await axios.post(
       `${process.env.SHIPROCKET_API_URL}/auth/login`,
@@ -39,7 +40,7 @@ exports.generateNewToken = async () => {
 
     // Calculate expiry date (10 days from now)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 10);
+    expiresAt.setDate(expiresAt.getDate() + 5);
 
     // Save new token to database
     const newToken = new ShipRocketToken({
@@ -64,7 +65,6 @@ exports.createOrder = async (orderData) => {
   try {
     // Get authentication token
     const token = await this.getActiveToken();
-
     // Make API request to ShipRocket
     const response = await fetch(
       'https://apiv2.shiprocket.in/v1/external/orders/create/adhoc',
@@ -72,7 +72,7 @@ exports.createOrder = async (orderData) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(orderData),
       }
@@ -115,7 +115,7 @@ exports.assignAWB = async (shipmentId, courierId) => {
       {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `${token}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -149,7 +149,8 @@ exports.getAvailableCouriers = async (
           cod: cod ? 1 : 0,
         },
         headers: {
-          Authorization: `${token}`,
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -172,7 +173,8 @@ exports.trackShipment = async (awbCode) => {
       `${process.env.SHIPROCKET_API_URL}/courier/track/awb/${awbCode}`,
       {
         headers: {
-          Authorization: `${token}`,
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
       }
     );

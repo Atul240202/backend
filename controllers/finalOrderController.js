@@ -6,7 +6,6 @@ const shipRocketController = require('./shipRocketController');
 exports.createFinalOrder = async (req, res) => {
   try {
     const orderData = req.body;
-
     // Add user reference to the order
     orderData.user = req.user.id;
 
@@ -33,7 +32,7 @@ exports.createFinalOrder = async (req, res) => {
       const shipRocketOrderData = {
         order_id: orderData.order_id,
         order_date: orderData.order_date,
-        pickup_location: orderData.pickup_location || 'Primary',
+        pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || 'Home',
         channel_id: orderData.channel_id || '',
         comment: orderData.comment || 'Order created via API',
         reseller_name: orderData.comment || '',
@@ -50,7 +49,7 @@ exports.createFinalOrder = async (req, res) => {
         billing_email: orderData.billing_email,
         billing_phone: orderData.billing_phone,
         billing_alternate_phone: orderData.billing_alternate_phone || '',
-        shipping_is_billing: orderData.shipping_is_billing || 'true',
+        shipping_is_billing: orderData.shipping_is_billing || true,
         shipping_customer_name: orderData.shipping_customer_name,
         shipping_last_name: orderData.shipping_last_name,
         shipping_address: orderData.shipping_address,
@@ -75,7 +74,7 @@ exports.createFinalOrder = async (req, res) => {
         ewaybill_no: orderData.ewaybill_no || '',
         customer_gstin: orderData.customer_gstin || '',
         invoice_number: orderData.invoice_number || '',
-        order_type: orderData.order_type || 'Retail',
+        order_type: orderData.order_type || 'ESSENTIALS',
       };
 
       // Create ShipRocket order
@@ -326,7 +325,7 @@ exports.retryShipRocketIntegration = async (req, res) => {
     const shipRocketOrderData = {
       order_id: finalOrder.order_id,
       order_date: finalOrder.order_date,
-      pickup_location: finalOrder.pickup_location || 'Primary',
+      pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || 'Home',
       channel_id: finalOrder.channel_id || '',
       comment: finalOrder.comment || 'Order created via API',
       reseller_name: finalOrder.comment || '',
@@ -343,7 +342,7 @@ exports.retryShipRocketIntegration = async (req, res) => {
       billing_email: finalOrder.billing_email,
       billing_phone: finalOrder.billing_phone,
       billing_alternate_phone: finalOrder.billing_alternate_phone || '',
-      shipping_is_billing: finalOrder.shipping_is_billing || 'true',
+      shipping_is_billing: finalOrder.shipping_is_billing || true,
       shipping_customer_name: finalOrder.shipping_customer_name,
       shipping_last_name: finalOrder.shipping_last_name,
       shipping_address: finalOrder.shipping_address,
@@ -368,7 +367,7 @@ exports.retryShipRocketIntegration = async (req, res) => {
       ewaybill_no: finalOrder.ewaybill_no || '',
       customer_gstin: finalOrder.customer_gstin || '',
       invoice_number: finalOrder.invoice_number || '',
-      order_type: finalOrder.order_type || 'Retail',
+      order_type: finalOrder.order_type || 'ESSENTIALS',
     };
 
     // Create ShipRocket order

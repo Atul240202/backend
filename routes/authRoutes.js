@@ -9,6 +9,7 @@ const {
   verifyResetOTP,
   resendResetOTP,
   resetPassword,
+  googleAuth,
 } = require('../controllers/authController');
 
 // Register a new user
@@ -22,6 +23,9 @@ router.post('/resend-otp', resendOTP);
 
 // Login user
 router.post('/login', login);
+
+// Google authentication
+router.post('/google', googleAuth);
 
 // Forgot password
 router.post('/forgot-password', forgotPassword);

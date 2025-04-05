@@ -72,7 +72,9 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.googleSignIn; // Password is required only if not using Google Sign-In
+      },
     },
     username: {
       type: String,
@@ -91,6 +93,22 @@ const userSchema = new mongoose.Schema(
     subscribeToNewsletter: {
       type: Boolean,
       default: false,
+    },
+    googleSignIn: {
+      type: Boolean,
+      default: false,
+    },
+    googleId: {
+      type: String,
+      sparse: true, // Allows null values but ensures uniqueness for non-null values
+    },
+    firstName: {
+      type: String,
+      trim: true,
+    },
+    lastName: {
+      type: String,
+      trim: true,
     },
     createdAt: {
       type: Date,
@@ -121,14 +139,8 @@ const userSchema = new mongoose.Schema(
 // Method to compare passwords
 userSchema.methods.comparePassword = async function (candidatePassword) {
   try {
-    console.log('Comparing passwords');
-    console.log('Candidate password:', candidatePassword);
-    // Only log a portion of the hash for security
-    console.log('Stored password hash (first 10 chars):', this.password);
-
     // Use bcrypt.compare which handles the salt extraction and comparison
     const result = await bcrypt.compare(candidatePassword, this.password);
-    console.log('Password comparison result:', result);
     return result;
   } catch (error) {
     console.error('Error comparing passwords:', error);

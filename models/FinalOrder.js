@@ -11,7 +11,9 @@ const orderItemSchema = new mongoose.Schema({
   },
   sku: {
     type: String,
-    default: '',
+    default: function () {
+      return this.id;
+    },
   },
   units: {
     type: String,
@@ -53,8 +55,7 @@ const finalOrderSchema = new mongoose.Schema(
     },
     pickup_location: {
       type: String,
-      default:
-        'B - 80, B Block, Sector 5, , Gautam Buddha Nagar, Uttar Pradesh, 201301',
+      default: 'Home',
     },
     channel_id: {
       type: String,
@@ -121,8 +122,8 @@ const finalOrderSchema = new mongoose.Schema(
       default: '',
     },
     shipping_is_billing: {
-      type: String,
-      default: 'true',
+      type: Boolean,
+      default: true,
     },
     shipping_customer_name: {
       type: String,
@@ -219,7 +220,7 @@ const finalOrderSchema = new mongoose.Schema(
     },
     order_type: {
       type: String,
-      default: 'Retail',
+      default: 'ESSENTIALS',
     },
     status: {
       type: String,

@@ -49,8 +49,7 @@ const orderSchema = new mongoose.Schema(
     },
     pickup_location: {
       type: String,
-      default:
-        'B - 80, B Block, Sector 5, , Gautam Buddha Nagar, Uttar Pradesh, 201301',
+      default: 'Home',
     },
     channel_id: {
       type: String,
@@ -215,7 +214,7 @@ const orderSchema = new mongoose.Schema(
     },
     order_type: {
       type: String,
-      default: 'prepaid',
+      default: 'ESSENTIALS',
     },
     status: {
       type: String,
