@@ -95,40 +95,40 @@ exports.createFinalOrder = async (req, res) => {
       // Save updated order
       await finalOrder.save();
 
-      // Get available couriers for automatic selection
-      const availableCouriers = await shipRocketController.getAvailableCouriers(
-        process.env.SHIPROCKET_PICKUP_PINCODE || '110001', // Default or configured pickup pincode
-        orderData.shipping_pincode,
-        orderData.weight || '0.5',
-        orderData.payment_method === 'COD'
-      );
+      // // Get available couriers for automatic selection
+      // const availableCouriers = await shipRocketController.getAvailableCouriers(
+      //   process.env.SHIPROCKET_PICKUP_PINCODE || '110001', // Default or configured pickup pincode
+      //   orderData.shipping_pincode,
+      //   orderData.weight || '0.5',
+      //   orderData.payment_method === 'COD'
+      // );
 
-      // Select the first available courier
-      if (
-        availableCouriers &&
-        availableCouriers.data &&
-        availableCouriers.data.available_courier_companies &&
-        availableCouriers.data.available_courier_companies.length > 0
-      ) {
-        const selectedCourier =
-          availableCouriers.data.available_courier_companies[0];
+      // // Select the first available courier
+      // if (
+      //   availableCouriers &&
+      //   availableCouriers.data &&
+      //   availableCouriers.data.available_courier_companies &&
+      //   availableCouriers.data.available_courier_companies.length > 0
+      // ) {
+      //   const selectedCourier =
+      //     availableCouriers.data.available_courier_companies[0];
 
-        // Assign AWB
-        const awbResponse = await shipRocketController.assignAWB(
-          shipRocketResponse.shipment_id,
-          selectedCourier.courier_company_id
-        );
+      //   // Assign AWB
+      //   const awbResponse = await shipRocketController.assignAWB(
+      //     shipRocketResponse.shipment_id,
+      //     selectedCourier.courier_company_id
+      //   );
 
-        // Update order with AWB and courier details
-        finalOrder.awbCode = awbResponse.awb_code;
-        finalOrder.courierId = selectedCourier.courier_company_id;
-        finalOrder.courierName = selectedCourier.courier_name;
-        finalOrder.trackingUrl = awbResponse.tracking_url || '';
-        finalOrder.shipmentStatus = 'AWB_ASSIGNED';
+      //   // Update order with AWB and courier details
+      //   finalOrder.awbCode = awbResponse.awb_code;
+      //   finalOrder.courierId = selectedCourier.courier_company_id;
+      //   finalOrder.courierName = selectedCourier.courier_name;
+      //   finalOrder.trackingUrl = awbResponse.tracking_url || '';
+      //   finalOrder.shipmentStatus = 'AWB_ASSIGNED';
 
-        // Save updated order
-        await finalOrder.save();
-      }
+      //   // Save updated order
+      //   await finalOrder.save();
+      // }
     } catch (shipRocketError) {
       console.error(
         'Error processing ShipRocket integration:',

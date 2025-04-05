@@ -9,6 +9,7 @@ const {
   getVariableProducts,
   getProductCategories,
   searchProductsByKeyword,
+  searchBranchProducts,
 } = require('../controllers/productController');
 
 // Get all products
@@ -34,5 +35,6 @@ router.route('/:id').get(getProductById);
 
 // Search products by keyword
 router.route('/search').get(searchProductsByKeyword);
+router.route('/searchbybrand').get(searchBranchProducts);
 
 module.exports = router;

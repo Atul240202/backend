@@ -65,6 +65,37 @@ const searchProductsByKeyword = asyncHandler(async (req, res) => {
   res.json({ products, total: count });
 });
 
+// @desc    Search products by keyword
+// @route   GET /api/products/search
+// @access  Public
+const searchBranchProducts = asyncHandler(async (req, res) => {
+  const pageSize = Number(req.query.limit) || 12;
+  const page = Number(req.query.page) || 1;
+  const keyword = req.query.keyword || '';
+
+  const searchQuery = {
+    $or: [
+      { name: { $regex: keyword, $options: 'i' } },
+      { description: { $regex: keyword, $options: 'i' } },
+      { 'categories.name': { $regex: keyword, $options: 'i' } },
+      { 'tags.name': { $regex: keyword, $options: 'i' } },
+    ],
+  };
+
+  const count = await Product.countDocuments(searchQuery);
+  const products = await Product.find(searchQuery)
+    .limit(pageSize)
+    .skip(pageSize * (page - 1));
+
+  res.json({
+    products,
+    page,
+    pages: Math.ceil(count / pageSize),
+    total: count,
+    keyword,
+  });
+});
+
 // @desc    Fetch single product
 // @route   GET /api/products/:id
 // @access  Public
@@ -179,4 +210,5 @@ module.exports = {
   getVariableProducts,
   getProductCategories,
   searchProductsByKeyword,
+  searchBranchProducts,
 };
