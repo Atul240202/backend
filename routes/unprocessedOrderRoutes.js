@@ -9,7 +9,11 @@ const {
   deleteUnprocessedOrder,
   deleteUserUnprocessedOrders,
 } = require('../controllers/unprocessedOrderController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const {
+  protect,
+  admin,
+  protectAdmin,
+} = require('../middleware/authMiddleware');
 
 // Routes for unprocessed orders
 router
@@ -17,14 +21,14 @@ router
   .post(protect, createUnprocessedOrder)
   .get(protect, getUserUnprocessedOrders);
 
-router.route('/all').get(protect, admin, getAllUnprocessedOrders);
+router.route('/all').get(protectAdmin, getAllUnprocessedOrders);
 
 router.route('/user').delete(protect, deleteUserUnprocessedOrders);
 
 router
   .route('/:id')
   .get(protect, getUnprocessedOrderById)
-  .put(protect, admin, updateUnprocessedOrder)
+  .put(protectAdmin, updateUnprocessedOrder)
   .delete(protect, deleteUnprocessedOrder);
 
 module.exports = router;

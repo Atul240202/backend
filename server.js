@@ -42,6 +42,7 @@ app.use(
       'https://industrywaala.com', // Production
       'https://ecommerce-frontend-lac-beta.vercel.app',
       'https://accounts.google.com', // Allow Google's authentication servers
+      'http://localhost:3000', //Admin panel
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -70,7 +71,7 @@ app.get('/', (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
