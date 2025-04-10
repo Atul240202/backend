@@ -1,5 +1,5 @@
-const axios = require('axios');
-const ShipRocketToken = require('../models/ShipRocketToken');
+const axios = require("axios");
+const ShipRocketToken = require("../models/ShipRocketToken");
 
 // Get active token or generate a new one
 exports.getActiveToken = async () => {
@@ -17,8 +17,8 @@ exports.getActiveToken = async () => {
     // If token doesn't exist or is expired, generate a new one
     return await this.generateNewToken();
   } catch (error) {
-    console.error('Error getting active token:', error);
-    throw new Error('Failed to get ShipRocket token');
+    console.error("Error getting active token:", error);
+    throw new Error("Failed to get ShipRocket token");
   }
 };
 
@@ -55,8 +55,8 @@ exports.generateNewToken = async () => {
 
     return response.data.token;
   } catch (error) {
-    console.error('Error generating new token:', error);
-    throw new Error('Failed to generate ShipRocket token');
+    console.error("Error generating new token:", error);
+    throw new Error("Failed to generate ShipRocket token");
   }
 };
 
@@ -67,11 +67,11 @@ exports.createOrder = async (orderData) => {
     const token = await this.getActiveToken();
     // Make API request to ShipRocket
     const response = await fetch(
-      'https://apiv2.shiprocket.in/v1/external/orders/create/adhoc',
+      "https://apiv2.shiprocket.in/v1/external/orders/create/adhoc",
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(orderData),
@@ -85,7 +85,7 @@ exports.createOrder = async (orderData) => {
     if (!response.ok) {
       // Throw error with status code and message
       const error = new Error(
-        data.message || 'Failed to create ShipRocket order'
+        data.message || "Failed to create ShipRocket order"
       );
       error.response = { status: response.status };
       throw error;
@@ -94,7 +94,7 @@ exports.createOrder = async (orderData) => {
     // Return successful response
     return data;
   } catch (error) {
-    console.error('ShipRocket API Error:', error);
+    console.error("ShipRocket API Error:", error);
     throw error;
   }
 };
@@ -114,7 +114,7 @@ exports.assignAWB = async (shipmentId, courierId) => {
       },
       {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       }
@@ -122,8 +122,8 @@ exports.assignAWB = async (shipmentId, courierId) => {
 
     return response.data;
   } catch (error) {
-    console.error('Error assigning AWB:', error);
-    throw new Error('Failed to assign AWB');
+    console.error("Error assigning AWB:", error);
+    throw new Error("Failed to assign AWB");
   }
 };
 
@@ -149,7 +149,7 @@ exports.getAvailableCouriers = async (
           cod: cod ? 1 : 0,
         },
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       }
@@ -157,8 +157,8 @@ exports.getAvailableCouriers = async (
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching available couriers:', error);
-    throw new Error('Failed to fetch available couriers');
+    console.error("Error fetching available couriers:", error);
+    throw new Error("Failed to fetch available couriers");
   }
 };
 
@@ -173,7 +173,7 @@ exports.trackShipment = async (awbCode) => {
       `${process.env.SHIPROCKET_API_URL}/courier/track/awb/${awbCode}`,
       {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       }
@@ -181,8 +181,8 @@ exports.trackShipment = async (awbCode) => {
 
     return response.data;
   } catch (error) {
-    console.error('Error tracking shipment:', error);
-    throw new Error('Failed to track shipment');
+    console.error("Error tracking shipment:", error);
+    throw new Error("Failed to track shipment");
   }
 };
 
@@ -193,13 +193,37 @@ exports.refreshToken = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'ShipRocket token refreshed successfully',
+      message: "ShipRocket token refreshed successfully",
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to refresh ShipRocket token',
+      message: "Failed to refresh ShipRocket token",
       error: error.message,
     });
+  }
+};
+
+// Function to fetch order details from ShipRocket
+exports.getShipRocketOrder = async (orderId) => {
+  try {
+    const token = await this.getActiveToken();
+
+    const response = await axios.get(
+      `${SHIPROCKET_API_URL}/orders/${orderId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return response.data.data;
+  } catch (error) {
+    console.error(
+      `Error fetching ShipRocket order details for order ID ${orderId}:`,
+      error
+    );
+    throw new Error("Failed to fetch ShipRocket order details");
   }
 };

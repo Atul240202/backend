@@ -12,6 +12,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
@@ -24,6 +25,7 @@
     "mongoose": "^7.5.0",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.10.0",
+    "pdfkit": "^0.16.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
