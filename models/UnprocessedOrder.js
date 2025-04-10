@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const AddressSchema = new mongoose.Schema({
   id: { type: String, required: true },
@@ -25,10 +25,11 @@ const UnprocessedOrderSchema = new mongoose.Schema({
   tempId: { type: String, required: true, unique: true },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: "User",
     required: true,
   },
   products: [ProductSchema],
+
   shippingAddress: AddressSchema,
   billingAddress: AddressSchema,
   subtotal: { type: Number, required: true },
@@ -43,4 +44,4 @@ const UnprocessedOrderSchema = new mongoose.Schema({
 UnprocessedOrderSchema.index({ userId: 1 });
 UnprocessedOrderSchema.index({ tempId: 1 }, { unique: true });
 
-module.exports = mongoose.model('UnprocessedOrder', UnprocessedOrderSchema);
+module.exports = mongoose.model("UnprocessedOrder", UnprocessedOrderSchema);

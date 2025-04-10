@@ -80,7 +80,6 @@ exports.createOrder = async (orderData) => {
 
     // Parse response
     const data = await response.json();
-
     // Check if response is successful
     if (!response.ok) {
       // Throw error with status code and message

@@ -23,7 +23,6 @@ const generateInvoiceAndUpload = (order) => {
             Key: fileName,
             Body: pdfBuffer,
             ContentType: "application/pdf",
-            ACL: "public-read",
           })
           .promise();
 
@@ -34,24 +33,98 @@ const generateInvoiceAndUpload = (order) => {
       }
     });
 
-    // PDF content
-    doc.fontSize(20).text("Invoice", { align: "center" });
-    doc.moveDown().fontSize(12).text(`Order ID: ${order.order_id}`);
-    doc.text(`Date: ${order.order_date}`);
-    doc.text(`Customer: ${order.billing_customer_name}`);
-    doc.text(`Address: ${order.shipping_address}`);
+    // Header with Logos
+    doc.image("image/logo.png", 50, 30, { width: 100 });
+    doc.fontSize(10).text("Your company details", 200, 30, { align: "right" });
+    doc.text("B-80, B Block, Sector 5, Noida, Uttar Pradesh 201301", {
+      align: "right",
+    });
+    doc.text("PH.No. 7377 01 7377", { align: "right" });
+    doc.text("GSTIN : 09ACUPT6154G1ZV", { align: "right" });
+    doc.moveDown(2);
+
+    // Invoice Title
+    doc.fontSize(18).text("INVOICE", { align: "center" });
     doc.moveDown();
 
-    order.order_items.forEach((item, i) => {
-      doc.text(
-        `${i + 1}. ${item.name} | Qty: ${item.units} | Price: ₹${
-          item.selling_price
-        }`
-      );
-    });
+    doc.fontSize(12);
+    doc.text(`Order Number: ${order.order_id}`, 50, doc.y);
+    doc.text(`Order Date: ${order.order_date}`);
+    doc.text(`Payment Method: ${order.payment_method}`);
+    doc.moveDown();
 
-    doc.moveDown().text(`Shipping Charges: ₹${order.shipping_charges}`);
-    doc.text(`Total: ₹${order.sub_total}`);
+    // Table Headers
+    doc.font("Helvetica-Bold");
+    doc.text("Product", 50, doc.y, { width: 250, continued: true });
+    doc.text("Qty", 310, doc.y, {
+      width: 50,
+      continued: true,
+      align: "center",
+    });
+    doc.text("Unit Price", 370, doc.y, {
+      width: 80,
+      continued: true,
+      align: "right",
+    });
+    doc.text("Total", 460, doc.y, { width: 80, align: "right" });
+    doc.moveDown();
+
+    doc.font("Helvetica");
+
+    // Order Items in Table Format
+    order.order_items.forEach((item) => {
+      doc.text(item.name, 50, doc.y, {
+        width: 250,
+        ellipsis: true,
+        continued: true,
+      });
+      doc.text(`${item.units}`, 310, doc.y, {
+        width: 50,
+        continued: true,
+        align: "center",
+      });
+      doc.text(`Rs. ${item.selling_price}`, 370, doc.y, {
+        width: 80,
+        continued: true,
+        align: "right",
+      });
+      doc.text(
+        `Rs. ${(item.selling_price * item.units).toFixed(2)}`,
+        460,
+        doc.y,
+        { width: 80, align: "right" }
+      );
+      doc.moveDown();
+    });
+    doc.moveDown();
+
+    // Summary Section
+    doc.font("Helvetica-Bold");
+    doc.text(`Subtotal: Rs. ${order.sub_total}`, 400, doc.y, {
+      align: "right",
+    });
+    doc.text(`Shipping: Rs. ${order.shipping_charges}`, 400, doc.y, {
+      align: "right",
+    });
+    doc.text(
+      `Total: Rs. ${Number(order.sub_total) + Number(order.shipping_charges)}`,
+      400,
+      doc.y,
+      { align: "right" }
+    );
+    doc.moveDown(2);
+
+    // Billing Details
+    doc.fontSize(12).font("Helvetica");
+    doc.text("Billing To:", 50, doc.y, { bold: true });
+    doc.text(`${order.billing_customer_name} ${order.billing_last_name}`);
+    doc.text(order.billing_address);
+    if (order.billing_address_2) doc.text(order.billing_address_2);
+    doc.text(
+      `${order.billing_city}, ${order.billing_state}, ${order.billing_country}`
+    );
+    doc.text(`Email: ${order.billing_email} | Phone: ${order.billing_phone}`);
+    doc.moveDown();
     doc.end();
   });
 };

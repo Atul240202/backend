@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const orderItemSchema = new mongoose.Schema({
   name: {
@@ -27,7 +27,7 @@ const orderItemSchema = new mongoose.Schema({
   },
   hsn: {
     type: String,
-    default: '',
+    default: "",
   },
 });
 
@@ -35,7 +35,7 @@ const orderSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
     order_id: {
@@ -49,23 +49,23 @@ const orderSchema = new mongoose.Schema(
     },
     pickup_location: {
       type: String,
-      default: 'Home',
+      default: "Home",
     },
     channel_id: {
       type: String,
-      default: '2970164',
+      default: "2970164",
     },
     comment: {
       type: String,
-      default: '',
+      default: "",
     },
     reseller_name: {
       type: String,
-      default: '',
+      default: "",
     },
     company_name: {
       type: String,
-      default: '',
+      default: "",
     },
     billing_customer_name: {
       type: String,
@@ -73,7 +73,7 @@ const orderSchema = new mongoose.Schema(
     },
     billing_last_name: {
       type: String,
-      default: '',
+      default: "",
     },
     billing_address: {
       type: String,
@@ -81,11 +81,11 @@ const orderSchema = new mongoose.Schema(
     },
     billing_address_2: {
       type: String,
-      default: '',
+      default: "",
     },
     billing_isd_code: {
       type: String,
-      default: '',
+      default: "",
     },
     billing_city: {
       type: String,
@@ -113,7 +113,7 @@ const orderSchema = new mongoose.Schema(
     },
     billing_alternate_phone: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_is_billing: {
       type: Boolean,
@@ -121,43 +121,43 @@ const orderSchema = new mongoose.Schema(
     },
     shipping_customer_name: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_last_name: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_address: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_address_2: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_city: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_pincode: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_country: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_state: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_email: {
       type: String,
-      default: '',
+      default: "",
     },
     shipping_phone: {
       type: String,
-      default: '',
+      default: "",
     },
     order_items: [orderItemSchema],
     payment_method: {
@@ -202,27 +202,27 @@ const orderSchema = new mongoose.Schema(
     },
     ewaybill_no: {
       type: String,
-      default: '',
+      default: "",
     },
     customer_gstin: {
       type: String,
-      default: '',
+      default: "",
     },
     invoice_number: {
       type: String,
-      default: '',
+      default: "",
     },
     order_type: {
       type: String,
-      default: 'ESSENTIALS',
+      default: "ESSENTIALS",
     },
     status: {
       type: String,
-      enum: ['processing', 'confirmed', 'shipped', 'delivered', 'cancelled'],
-      default: 'processing',
+      enum: ["processing", "confirmed", "shipped", "delivered", "cancelled"],
+      default: "processing",
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Order', orderSchema);
+module.exports = mongoose.model("Order", orderSchema);

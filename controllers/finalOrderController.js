@@ -32,6 +32,7 @@ exports.getShipRocketOrder = async (req, res) => {
 exports.createFinalOrder = async (req, res) => {
   try {
     const orderData = req.body;
+
     // Add user reference to the order
     orderData.user = req.user.id;
 
@@ -62,7 +63,8 @@ exports.createFinalOrder = async (req, res) => {
         channel_id: orderData.channel_id || "",
         comment: orderData.comment || "Order created via API",
         reseller_name: orderData.comment || "",
-        company_name: orderData.comment || "",
+        company_name: orderData.company_name || "",
+        // gst_number: orderData.gst_number || "",
         billing_customer_name: orderData.billing_customer_name,
         billing_last_name: orderData.billing_last_name,
         billing_address: orderData.billing_address,
@@ -87,8 +89,9 @@ exports.createFinalOrder = async (req, res) => {
         shipping_email: orderData.shipping_email,
         shipping_phone: orderData.shipping_phone,
         order_items: orderData.order_items,
-        payment_method: orderData.payment_method === "COD" ? "COD" : "Prepaid",
-        shipping_charges: orderData.shipping_charges || "0",
+        payment_method:
+          orderData.payment_method === "COD" ? "COD" : "Online Gateway",
+        shipping_charges: orderData.shipping_charges || "200",
         giftwrap_charges: orderData.giftwrap_charges || "0",
         transaction_charges: orderData.transaction_charges || "0",
         total_discount: orderData.total_discount || "0",
@@ -98,7 +101,7 @@ exports.createFinalOrder = async (req, res) => {
         height: orderData.height || "10",
         weight: orderData.weight || "0.5",
         ewaybill_no: orderData.ewaybill_no || "",
-        customer_gstin: orderData.customer_gstin || "",
+        customer_gstin: orderData.gst_number || "",
         invoice_number: orderData.invoice_number || "",
         order_type: orderData.order_type || "ESSENTIALS",
       };
@@ -107,7 +110,6 @@ exports.createFinalOrder = async (req, res) => {
       shipRocketResponse = await shipRocketController.createOrder(
         shipRocketOrderData
       );
-
       // Update order with ShipRocket data
       finalOrder.shipRocketOrderId = shipRocketResponse.order_id;
       finalOrder.shipRocketShipmentId = shipRocketResponse.shipment_id;
@@ -125,15 +127,121 @@ exports.createFinalOrder = async (req, res) => {
       finalOrder.invoiceUrl = invoiceUrl;
       await finalOrder.save();
 
+      if (!orderData.shipping_email) {
+        throw new Error("Missing recipient email address (shipping_email).");
+      }
+
       await sendEmail({
-        from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
-        to: orderData.shipping_email,
-        subject: `Order Confirmation - #${orderData.order_id}`,
-        html: `
-          <h1>Thank you for your order!</h1>
-          <p>Your order has been successfully placed and is being processed.</p>
-          <p><strong>Order ID:</strong> ${orderData.order_id}</p>
-          <p>You can download your invoice here: <a href="${invoiceUrl}">View Invoice</a></p>
+        email:
+          orderData.shipping_email?.trim() || orderData.billing_email?.trim(),
+        subject: `Industrywaala - Order Confirmation - #${orderData.order_id}`,
+        message: `
+        <table style="width: 100%; font-family: Arial, sans-serif; border-collapse: collapse;">
+        <tr>
+        <td style="background-color: #f7f7f7; padding: 20px; text-align: center;">
+        <h1 style="color: #333;">Thank you for your order!</h1>
+        </td>
+        </tr>
+        <tr>
+        <td style="padding: 20px;">
+        <p style="font-size: 16px; color: #555;">Dear ${
+          orderData.shipping_customer_name || orderData.billing_customer_name
+        },</p>
+        <p style="font-size: 16px; color: #555;">We're excited to let you know that your order #${
+          orderData.order_id
+        } has been successfully placed and is now being processed.</p>
+        <h2 style="color: #333; margin-top: 30px;">Order Details:</h2>
+        <p style="font-size: 16px; color: #555;"><strong>Order ID:</strong> ${
+          orderData.order_id
+        }</p>
+        <p style="font-size: 16px; color: #555;"><strong>Order Date:</strong> ${new Date(
+          orderData.order_date
+        ).toLocaleDateString()}</p>
+        <h3 style="color: #333; margin-top: 20px;">Shipping Address:</h3>
+        <p style="font-size: 16px; color: #555;">
+        ${orderData.shipping_customer_name} ${orderData.shipping_last_name}<br>
+        ${orderData.shipping_address}<br>
+        ${
+          orderData.shipping_address_2
+            ? orderData.shipping_address_2 + "<br>"
+            : ""
+        }
+        ${orderData.shipping_city}, ${orderData.shipping_state} ${
+          orderData.shipping_pincode
+        }<br>
+        ${orderData.shipping_country}
+        </p>
+        <h3 style="color: #333; margin-top: 20px;">Billing Address:</h3>
+        <p style="font-size: 16px; color: #555;">
+        ${orderData.billing_customer_name} ${orderData.billing_last_name}<br>
+        ${orderData.billing_address}<br>
+        ${
+          orderData.billing_address_2
+            ? orderData.billing_address_2 + "<br>"
+            : ""
+        }
+        ${orderData.billing_city}, ${orderData.billing_state} ${
+          orderData.billing_pincode
+        }<br>
+        ${orderData.billing_country}
+        </p>
+        <h3 style="color: #333; margin-top: 20px;">Items in your order:</h3>
+        <ul style="list-style: none; padding: 0;">
+        ${orderData.order_items
+          .map(
+            (item) => `
+        <li style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">
+        <strong>${item.name}</strong> x ${item.units}
+        <span style="float: right;">₹${item.selling_price * item.units}</span>
+         </li>
+        `
+          )
+          .join("")}
+        </ul>
+        <p style="font-size: 16px; color: #555;"><strong>Subtotal:</strong> <span style="float: right;">₹${
+          orderData.sub_total
+        }</span></p>
+        ${
+          orderData.total_discount && parseFloat(orderData.total_discount) > 0
+            ? `<p style="font-size: 16px; color: #555;"><strong>Discount:</strong> <span style="float: right;">-₹${parseFloat(
+                orderData.total_discount
+              )}</span></p>`
+            : ""
+        }
+        ${
+          orderData.shipping_charges &&
+          parseFloat(orderData.shipping_charges) > 0
+            ? `<p style="font-size: 16px; color: #555;"><strong>Shipping Charges:</strong> <span style="float: right;">₹${parseFloat(
+                orderData.shipping_charges
+              )}</span></p>`
+            : `<p style="font-size: 16px; color: #555;"><strong>Shipping Charges:</strong> <span style="float: right;">Free</span></p>`
+        }
+        ${
+          orderData.transaction_charges &&
+          parseFloat(orderData.transaction_charges) > 0
+            ? `<p style="font-size: 16px; color: #555;"><strong>Transaction Charges:</strong> <span style="float: right;">₹${parseFloat(
+                orderData.transaction_charges
+              )}</span></p>`
+            : ""
+        }
+        <p style="font-size: 18px; color: #333; font-weight: bold;">Order Total: <span style="float: right;">₹${
+          parseFloat(orderData.sub_total) +
+          (parseFloat(orderData.shipping_charges) || 0) +
+          (parseFloat(orderData.transaction_charges) || 0) -
+          (parseFloat(orderData.total_discount) || 0)
+        }</span></p>
+        <p style="font-size: 16px; color: #555; margin-top: 30px;">You can download your invoice here: <a href="${invoiceUrl}" style="color: #007bff; text-decoration: none;">View Invoice</a></p>
+        <p style="font-size: 16px; color: #555;"><strong>You can stay updated about your order from the Order section on your account page.</strong></p>
+        <p style="font-size: 16px; color: #555; margin-top: 30px;">Thank you again for choosing Industrywaala!</p>
+         <p style="font-size: 16px; color: #555;">Sincerely,<br>The Industrywaala Team</p>
+         </td>
+        </tr>
+        <tr>
+         <td style="background-color: #f7f7f7; padding: 10px; text-align: center; font-size: 12px; color: #777;">
+        This is an automatically generated email. Please do not reply to this message.
+        </td>
+        </tr>
+        </table>
         `,
       });
       // // Get available couriers for automatic selection
@@ -370,7 +478,8 @@ exports.retryShipRocketIntegration = async (req, res) => {
       channel_id: finalOrder.channel_id || "",
       comment: finalOrder.comment || "Order created via API",
       reseller_name: finalOrder.comment || "",
-      company_name: finalOrder.comment || "",
+      company_name: finalOrder.company_name || "",
+
       billing_customer_name: finalOrder.billing_customer_name,
       billing_last_name: finalOrder.billing_last_name,
       billing_address: finalOrder.billing_address,
@@ -395,8 +504,9 @@ exports.retryShipRocketIntegration = async (req, res) => {
       shipping_email: finalOrder.shipping_email,
       shipping_phone: finalOrder.shipping_phone,
       order_items: finalOrder.order_items,
-      payment_method: finalOrder.payment_method === "COD" ? "COD" : "Prepaid",
-      shipping_charges: finalOrder.shipping_charges || "0",
+      payment_method:
+        finalOrder.payment_method === "COD" ? "COD" : "Online Gateway",
+      shipping_charges: finalOrder.shipping_charges || "200",
       giftwrap_charges: finalOrder.giftwrap_charges || "0",
       transaction_charges: finalOrder.transaction_charges || "0",
       total_discount: finalOrder.total_discount || "0",
@@ -406,7 +516,7 @@ exports.retryShipRocketIntegration = async (req, res) => {
       height: finalOrder.height || "10",
       weight: finalOrder.weight || "0.5",
       ewaybill_no: finalOrder.ewaybill_no || "",
-      customer_gstin: finalOrder.customer_gstin || "",
+      customer_gstin: finalOrder.gst_number || "",
       invoice_number: finalOrder.invoice_number || "",
       order_type: finalOrder.order_type || "ESSENTIALS",
     };
@@ -424,39 +534,39 @@ exports.retryShipRocketIntegration = async (req, res) => {
     await finalOrder.save();
 
     // Get available couriers for automatic selection
-    const availableCouriers = await shipRocketController.getAvailableCouriers(
-      process.env.SHIPROCKET_PICKUP_PINCODE || "110001",
-      finalOrder.shipping_pincode,
-      finalOrder.weight || "0.5",
-      finalOrder.payment_method === "COD"
-    );
+    // const availableCouriers = await shipRocketController.getAvailableCouriers(
+    //   process.env.SHIPROCKET_PICKUP_PINCODE || "110001",
+    //   finalOrder.shipping_pincode,
+    //   finalOrder.weight || "0.5",
+    //   finalOrder.payment_method === "COD"
+    // );
 
     // Select the first available courier
-    if (
-      availableCouriers &&
-      availableCouriers.data &&
-      availableCouriers.data.available_courier_companies &&
-      availableCouriers.data.available_courier_companies.length > 0
-    ) {
-      const selectedCourier =
-        availableCouriers.data.available_courier_companies[0];
+    // if (
+    //   availableCouriers &&
+    //   availableCouriers.data &&
+    //   availableCouriers.data.available_courier_companies &&
+    //   availableCouriers.data.available_courier_companies.length > 0
+    // ) {
+    //   const selectedCourier =
+    //     availableCouriers.data.available_courier_companies[0];
 
-      // Assign AWB
-      const awbResponse = await shipRocketController.assignAWB(
-        shipRocketResponse.shipment_id,
-        selectedCourier.courier_company_id
-      );
+    //   // Assign AWB
+    //   const awbResponse = await shipRocketController.assignAWB(
+    //     shipRocketResponse.shipment_id,
+    //     selectedCourier.courier_company_id
+    //   );
 
-      // Update order with AWB and courier details
-      finalOrder.awbCode = awbResponse.awb_code;
-      finalOrder.courierId = selectedCourier.courier_company_id;
-      finalOrder.courierName = selectedCourier.courier_name;
-      finalOrder.trackingUrl = awbResponse.tracking_url || "";
-      finalOrder.shipmentStatus = "AWB_ASSIGNED";
+    //   // Update order with AWB and courier details
+    //   finalOrder.awbCode = awbResponse.awb_code;
+    //   finalOrder.courierId = selectedCourier.courier_company_id;
+    //   finalOrder.courierName = selectedCourier.courier_name;
+    //   finalOrder.trackingUrl = awbResponse.tracking_url || "";
+    //   finalOrder.shipmentStatus = "AWB_ASSIGNED";
 
-      // Save updated order
-      await finalOrder.save();
-    }
+    //   // Save updated order
+    //   await finalOrder.save();
+    // }
 
     res.status(200).json({
       success: true,
