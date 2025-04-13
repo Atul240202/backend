@@ -1,9 +1,10 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema({
   id: { type: Number, required: true },
   name: { type: String, required: true },
   slug: { type: String },
+  brand: { type: String },
   permalink: { type: String },
   date_created: { type: String },
   date_created_gmt: { type: String },
@@ -14,6 +15,7 @@ const productSchema = new mongoose.Schema({
   featured: { type: Boolean },
   catalog_visibility: { type: String },
   description: { type: String },
+  short_description: { type: String },
   sku: { type: String },
   price: { type: String },
   regular_price: { type: String },
@@ -91,8 +93,8 @@ const productSchema = new mongoose.Schema({
   },
 });
 
-productSchema.index({ name: 'text', description: 'text' });
+productSchema.index({ name: "text", description: "text" });
 
-const Product = mongoose.model('MainProducts', productSchema);
+const Product = mongoose.model("MainProducts", productSchema);
 
 module.exports = Product;

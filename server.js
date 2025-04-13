@@ -18,6 +18,7 @@ const {
   scheduleFailedIntegrationCheck,
 } = require("./utils/scheduler");
 const cookieParser = require("cookie-parser");
+const imageUploadRoute = require("./routes/imageUploadRoute");
 
 dotenv.config();
 
@@ -64,6 +65,7 @@ app.use("/api/shiprocket", require("./routes/shipRocketRoutes"));
 app.use("/api/admin/auth", require("./routes/adminAuthRoutes"));
 app.use("/api/payment/phonepe", phonepeRoutes);
 app.use("/api", reviewRoutes);
+app.use("/api", imageUploadRoute);
 // Base route
 app.get("/", (req, res) => {
   res.send("API is running...");

@@ -4,11 +4,11 @@ const Product = require("../models/Product");
 // @desc    Add new product
 // @route   POST /api/products
 // @access  Private/Admin
-exports.createProduct = asyncHandler(async (req, res) => {
+const createProduct = asyncHandler(async (req, res) => {
   const data = req.body;
 
   // Validate essential fields
-  if (!data.name || !data.sku || !data.description || !data.price) {
+  if (!data.name || !data.price) {
     return res.status(400).json({
       success: false,
       message: "Missing required fields",
@@ -32,7 +32,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
 // @desc    Update product
 // @route   PUT /api/products/:id
 // @access  Private/Admin
-exports.updateProduct = asyncHandler(async (req, res) => {
+const updateProduct = asyncHandler(async (req, res) => {
   const productId = req.params.id;
   const updates = req.body;
 
@@ -56,7 +56,7 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 // @desc    Delete product
 // @route   DELETE /api/products/:id
 // @access  Private/Admin
-exports.deleteProduct = asyncHandler(async (req, res) => {
+const deleteProduct = asyncHandler(async (req, res) => {
   const productId = req.params.id;
 
   const product = await Product.findOneAndDelete({ id: productId });
@@ -84,24 +84,20 @@ const getProducts = asyncHandler(async (req, res) => {
   const keyword = req.query.keyword
     ? {
         $or: [
-          {
-            name: {
-              $regex: req.query.keyword,
-              $options: "i",
-            },
-          },
-          {
-            description: {
-              $regex: req.query.keyword,
-              $options: "i",
-            },
-          },
+          { name: { $regex: req.query.keyword, $options: "i" } },
+          { description: { $regex: req.query.keyword, $options: "i" } },
         ],
       }
     : {};
 
-  const count = await Product.countDocuments({ ...keyword });
-  const products = await Product.find({ ...keyword })
+  // 👇 Add status !== 'draft'
+  const filter = {
+    ...keyword,
+    status: { $ne: "draft" },
+  };
+
+  const count = await Product.countDocuments(filter);
+  const products = await Product.find(filter)
     .limit(pageSize)
     .skip(pageSize * (page - 1));
 
@@ -110,6 +106,20 @@ const getProducts = asyncHandler(async (req, res) => {
     page,
     pages: Math.ceil(count / pageSize),
     total: count,
+  });
+});
+
+// @desc    Fetch all draft products
+// @route   GET /api/products/drafts
+// @access  Admin (or Authenticated User)
+const getDraftProducts = asyncHandler(async (req, res) => {
+  const products = await Product.find({ status: "draft" }).sort({
+    createdAt: -1,
+  });
+
+  res.json({
+    products,
+    total: products.length,
   });
 });
 
@@ -247,7 +257,7 @@ const getBestSellerProducts = asyncHandler(async (req, res) => {
 });
 
 // @desc    Fetch products whose type is variable
-// @route   GET /api/products/featured
+// @route   GET /api/products/variable
 // @access  Public
 const getVariableProducts = asyncHandler(async (req, res) => {
   const products = await Product.find({ type: "variable" });
@@ -284,4 +294,8 @@ module.exports = {
   getProductCategories,
   searchProductsByKeyword,
   searchBranchProducts,
+  deleteProduct,
+  updateProduct,
+  createProduct,
+  getDraftProducts,
 };

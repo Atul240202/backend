@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 const {
   getProducts,
@@ -10,31 +10,44 @@ const {
   getProductCategories,
   searchProductsByKeyword,
   searchBranchProducts,
-} = require('../controllers/productController');
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  getDraftProducts,
+} = require("../controllers/productController");
 
-// Get all products
-router.route('/').get(getProducts);
+const { protectAdmin, isAdmin } = require("../middleware/authMiddleware");
+
+// Create a product & get product
+router.route("/").get(getProducts).post(protectAdmin, isAdmin, createProduct);
+
+// Get draft products
+router.route("/drafts").get(protectAdmin, isAdmin, getDraftProducts);
 
 // Get featured products
-router.route('/featured').get(getFeaturedProducts);
+router.route("/featured").get(getFeaturedProducts);
 
 // Get best selling products
-router.route('/bestsellers').get(getBestSellerProducts);
+router.route("/bestsellers").get(getBestSellerProducts);
 
 // Get variable products
-router.route('/type/variable').get(getVariableProducts);
+router.route("/type/variable").get(getVariableProducts);
 
 // Get all product categories
-router.route('/categories').get(getProductCategories);
+router.route("/categories").get(getProductCategories);
 
 // Get products by category
-router.route('/category/:slug').get(getProductsByCategory);
+router.route("/category/:slug").get(getProductsByCategory);
 
 // Get single product by ID
-router.route('/:id').get(getProductById);
+router
+  .route("/:id")
+  .get(getProductById)
+  .put(protectAdmin, isAdmin, updateProduct)
+  .delete(protectAdmin, isAdmin, deleteProduct);
 
 // Search products by keyword
-router.route('/search').get(searchProductsByKeyword);
-router.route('/searchbybrand').get(searchBranchProducts);
+router.route("/search").get(searchProductsByKeyword);
+router.route("/searchbybrand").get(searchBranchProducts);
 
 module.exports = router;
