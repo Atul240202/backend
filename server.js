@@ -12,6 +12,7 @@ const userRoutes = require("./routes/userRoutes");
 const unprocessedOrderRoutes = require("./routes/unprocessedOrderRoutes");
 const finalOrderRoutes = require("./routes/finalOrderRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const phonepeRoutes = require("./routes/phonepeRoutes");
 const {
   scheduleTokenRefresh,
   scheduleFailedIntegrationCheck,
@@ -61,6 +62,7 @@ app.use("/api/unprocessed-orders", unprocessedOrderRoutes);
 app.use("/api/final-orders", finalOrderRoutes);
 app.use("/api/shiprocket", require("./routes/shipRocketRoutes"));
 app.use("/api/admin/auth", require("./routes/adminAuthRoutes"));
+app.use("/api/payment/phonepe", phonepeRoutes);
 app.use("/api", reviewRoutes);
 // Base route
 app.get("/", (req, res) => {

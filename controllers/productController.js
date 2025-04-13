@@ -1,5 +1,78 @@
-const asyncHandler = require('express-async-handler');
-const Product = require('../models/Product');
+const asyncHandler = require("express-async-handler");
+const Product = require("../models/Product");
+
+// @desc    Add new product
+// @route   POST /api/products
+// @access  Private/Admin
+exports.createProduct = asyncHandler(async (req, res) => {
+  const data = req.body;
+
+  // Validate essential fields
+  if (!data.name || !data.sku || !data.description || !data.price) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing required fields",
+    });
+  }
+
+  const lastProduct = await Product.findOne().sort({ id: -1 });
+  const newId = lastProduct ? lastProduct.id + 1 : 1;
+
+  const product = new Product({
+    ...data,
+    id: newId,
+    date_created: new Date().toISOString(),
+    date_created_gmt: new Date().toUTCString(),
+  });
+
+  const createdProduct = await product.save();
+  res.status(201).json({ success: true, product: createdProduct });
+});
+
+// @desc    Update product
+// @route   PUT /api/products/:id
+// @access  Private/Admin
+exports.updateProduct = asyncHandler(async (req, res) => {
+  const productId = req.params.id;
+  const updates = req.body;
+
+  const product = await Product.findOne({ id: productId });
+
+  if (!product) {
+    return res.status(404).json({
+      success: false,
+      message: "Product not found",
+    });
+  }
+
+  Object.assign(product, updates);
+  product.date_modified = new Date().toISOString();
+  product.date_modified_gmt = new Date().toUTCString();
+
+  const updatedProduct = await product.save();
+  res.json({ success: true, product: updatedProduct });
+});
+
+// @desc    Delete product
+// @route   DELETE /api/products/:id
+// @access  Private/Admin
+exports.deleteProduct = asyncHandler(async (req, res) => {
+  const productId = req.params.id;
+
+  const product = await Product.findOneAndDelete({ id: productId });
+
+  if (!product) {
+    return res.status(404).json({
+      success: false,
+      message: "Product not found",
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `Product '${product.name}' deleted successfully.`,
+  });
+});
 
 // @desc    Fetch all products
 // @route   GET /api/products
@@ -14,13 +87,13 @@ const getProducts = asyncHandler(async (req, res) => {
           {
             name: {
               $regex: req.query.keyword,
-              $options: 'i',
+              $options: "i",
             },
           },
           {
             description: {
               $regex: req.query.keyword,
-              $options: 'i',
+              $options: "i",
             },
           },
         ],
@@ -44,18 +117,18 @@ const getProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/products/search
 // @access  Public
 const searchProductsByKeyword = asyncHandler(async (req, res) => {
-  const keyword = req.query.keyword || '';
+  const keyword = req.query.keyword || "";
   const limit = Number(req.query.limit) || 10;
 
-  if (keyword.trim() === '') {
+  if (keyword.trim() === "") {
     return res.json({ products: [], total: 0 });
   }
 
   const searchQuery = {
     $or: [
-      { title: { $regex: keyword, $options: 'i' } },
-      { description: { $regex: keyword, $options: 'i' } },
-      { 'brand.name': { $regex: keyword, $options: 'i' } },
+      { title: { $regex: keyword, $options: "i" } },
+      { description: { $regex: keyword, $options: "i" } },
+      { "brand.name": { $regex: keyword, $options: "i" } },
     ],
   };
 
@@ -71,14 +144,14 @@ const searchProductsByKeyword = asyncHandler(async (req, res) => {
 const searchBranchProducts = asyncHandler(async (req, res) => {
   const pageSize = Number(req.query.limit) || 12;
   const page = Number(req.query.page) || 1;
-  const keyword = req.query.keyword || '';
+  const keyword = req.query.keyword || "";
 
   const searchQuery = {
     $or: [
-      { name: { $regex: keyword, $options: 'i' } },
-      { description: { $regex: keyword, $options: 'i' } },
-      { 'categories.name': { $regex: keyword, $options: 'i' } },
-      { 'tags.name': { $regex: keyword, $options: 'i' } },
+      { name: { $regex: keyword, $options: "i" } },
+      { description: { $regex: keyword, $options: "i" } },
+      { "categories.name": { $regex: keyword, $options: "i" } },
+      { "tags.name": { $regex: keyword, $options: "i" } },
     ],
   };
 
@@ -101,7 +174,7 @@ const searchBranchProducts = asyncHandler(async (req, res) => {
 // @access  Public
 const getProductById = asyncHandler(async (req, res) => {
   // Extract the ID from the slug-id format
-  const urlParts = req.params.id.split('-');
+  const urlParts = req.params.id.split("-");
   const productId = urlParts[urlParts.length - 1];
 
   // Find the product by the extracted ID
@@ -111,7 +184,7 @@ const getProductById = asyncHandler(async (req, res) => {
     res.json(product);
   } else {
     res.status(404);
-    throw new Error('Product not found');
+    throw new Error("Product not found");
   }
 });
 
@@ -126,14 +199,14 @@ const getProductsByCategory = asyncHandler(async (req, res) => {
 
   // Special case for "all" category - fetch uncategorized products
   const filter =
-    categorySlug === 'all'
-      ? { 'categories.name': 'Uncategorized' }
-      : { 'categories.slug': categorySlug };
+    categorySlug === "all"
+      ? { "categories.name": "Uncategorized" }
+      : { "categories.slug": categorySlug };
 
   const count = await Product.countDocuments(filter);
 
   // For "all" category, sort alphabetically by name
-  const sortOption = categorySlug === 'all' ? { name: 1 } : {};
+  const sortOption = categorySlug === "all" ? { name: 1 } : {};
 
   const products = await Product.find(filter)
     .sort(sortOption)
@@ -177,7 +250,7 @@ const getBestSellerProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/products/featured
 // @access  Public
 const getVariableProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find({ type: 'variable' });
+  const products = await Product.find({ type: "variable" });
   res.json(products);
 });
 
@@ -187,12 +260,12 @@ const getVariableProducts = asyncHandler(async (req, res) => {
 const getProductCategories = asyncHandler(async (req, res) => {
   // Use aggregation to get unique categories
   const categories = await Product.aggregate([
-    { $unwind: '$categories' },
+    { $unwind: "$categories" },
     {
       $group: {
-        _id: '$categories.id',
-        name: { $first: '$categories.name' },
-        slug: { $first: '$categories.slug' },
+        _id: "$categories.id",
+        name: { $first: "$categories.name" },
+        slug: { $first: "$categories.slug" },
       },
     },
     { $sort: { name: 1 } },

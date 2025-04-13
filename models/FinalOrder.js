@@ -224,13 +224,21 @@ const finalOrderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
+      enum: [
+        "pending",
+        "processing",
+        "payment confirmed",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ],
       default: "pending",
     },
     unprocessed_order_id: {
       type: String,
       default: null,
     },
+    phonepeTransactionId: String,
     shipRocketOrderId: {
       type: String,
       default: null,
@@ -292,6 +300,24 @@ const finalOrderSchema = new mongoose.Schema(
       message: {
         type: String,
         default: null,
+      },
+    },
+    phonepeApiResults: {
+      success: {
+        type: Boolean,
+        default: null,
+      },
+      statusCode: {
+        type: String,
+        default: "",
+      },
+      transactionId: {
+        type: String,
+        default: "",
+      },
+      merchantTransactionId: {
+        type: String,
+        default: "",
       },
     },
   },

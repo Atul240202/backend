@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const addressSchema = new mongoose.Schema({
   id: {
@@ -8,7 +8,7 @@ const addressSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['shipping', 'billing'],
+    enum: ["shipping", "billing"],
     required: true,
   },
   isDefault: {
@@ -82,8 +82,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
+      enum: ["user", "admin"],
+      default: "user",
     },
     isVerified: {
       type: Boolean,
@@ -105,6 +105,10 @@ const userSchema = new mongoose.Schema(
     firstName: {
       type: String,
       trim: true,
+    },
+    userGST: {
+      type: String,
+      default: "",
     },
     lastName: {
       type: String,
@@ -143,11 +147,11 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
     const result = await bcrypt.compare(candidatePassword, this.password);
     return result;
   } catch (error) {
-    console.error('Error comparing passwords:', error);
+    console.error("Error comparing passwords:", error);
     return false;
   }
 };
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;

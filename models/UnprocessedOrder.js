@@ -36,6 +36,14 @@ const UnprocessedOrderSchema = new mongoose.Schema({
   shipping: { type: Number, required: true },
   total: { type: Number, required: true },
   reason: { type: String, required: true },
+  phonepe: {
+    transactionId: String,
+    status: {
+      type: String,
+      enum: ["initiated", "success", "failed", "cancelled"],
+      default: "initiated",
+    },
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

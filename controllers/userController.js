@@ -1,15 +1,15 @@
-const User = require('../models/User');
-const asyncHandler = require('express-async-handler');
+const User = require("../models/User");
+const asyncHandler = require("express-async-handler");
 
 // @desc    Get user profile
 // @route   GET /api/users/profile
 // @access  Private
 exports.getUserProfile = asyncHandler(async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id).select("-password");
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.status(200).json({
@@ -17,8 +17,8 @@ exports.getUserProfile = asyncHandler(async (req, res) => {
       user,
     });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -27,13 +27,13 @@ exports.getUserProfile = asyncHandler(async (req, res) => {
 // @access  Private
 exports.updateUserProfile = asyncHandler(async (req, res) => {
   try {
-    const { fullName, email, phone, subscribeToNewsletter } = req.body;
+    const { fullName, email, phone, subscribeToNewsletter, userGST } = req.body;
 
     // Find user
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Check if email is being changed and if it's already in use
@@ -44,7 +44,7 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
       });
       if (emailExists) {
         return res.status(400).json({
-          message: 'This email is already registered with another account',
+          message: "This email is already registered with another account",
         });
       }
     }
@@ -58,7 +58,7 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
       if (phoneExists) {
         return res.status(400).json({
           message:
-            'This phone number is already registered with another account',
+            "This phone number is already registered with another account",
         });
       }
     }
@@ -67,6 +67,7 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     if (fullName) user.fullName = fullName;
     if (email) user.email = email;
     if (phone) user.phone = phone;
+    if (userGST) user.userGST = userGST;
     if (subscribeToNewsletter !== undefined)
       user.subscribeToNewsletter = subscribeToNewsletter;
 
@@ -75,19 +76,71 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Profile updated successfully',
+      message: "Profile updated successfully",
       user: {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
         phone: user.phone,
         role: user.role,
+        userGST: user.userGST,
         subscribeToNewsletter: user.subscribeToNewsletter,
       },
     });
   } catch (error) {
-    console.error('Error updating user profile:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error updating user profile:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// @desc    Get user GST
+// @route   GET /api/users/usergst
+// @access  Private
+
+exports.getUserGstNo = asyncHandler(async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("userGST");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      userGST: user.userGST || "",
+    });
+  } catch (error) {
+    console.error("Error fetching user gst no.:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// @desc    Update user GST
+// @route   GET /api/users/usergst
+// @access  Private
+
+exports.updateUserGst = asyncHandler(async (req, res) => {
+  try {
+    const { userGST } = req.body;
+    // Find user
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (userGST) user.userGST = userGST;
+    // Save updated user
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "UserGST updated successfully",
+      user: {
+        userGST: user.userGST,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating user gst:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -96,10 +149,10 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
 // @access  Private
 exports.getUserAddresses = asyncHandler(async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('addresses');
+    const user = await User.findById(req.user.id).select("addresses");
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     res.status(200).json({
@@ -107,8 +160,8 @@ exports.getUserAddresses = asyncHandler(async (req, res) => {
       addresses: user.addresses || [],
     });
   } catch (error) {
-    console.error('Error fetching user addresses:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error fetching user addresses:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -145,14 +198,14 @@ exports.addUserAddress = asyncHandler(async (req, res) => {
     ) {
       return res
         .status(400)
-        .json({ message: 'Please provide all required fields' });
+        .json({ message: "Please provide all required fields" });
     }
 
     // Find user
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Create new address
@@ -198,12 +251,12 @@ exports.addUserAddress = asyncHandler(async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Address added successfully',
+      message: "Address added successfully",
       address: newAddress,
     });
   } catch (error) {
-    console.error('Error adding user address:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error adding user address:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -232,7 +285,7 @@ exports.updateUserAddress = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Find the address to update
@@ -241,7 +294,7 @@ exports.updateUserAddress = asyncHandler(async (req, res) => {
     );
 
     if (addressIndex === -1) {
-      return res.status(404).json({ message: 'Address not found' });
+      return res.status(404).json({ message: "Address not found" });
     }
 
     // Update address fields
@@ -282,12 +335,12 @@ exports.updateUserAddress = asyncHandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Address updated successfully',
+      message: "Address updated successfully",
       address: updatedAddress,
     });
   } catch (error) {
-    console.error('Error updating user address:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error updating user address:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -302,7 +355,7 @@ exports.deleteUserAddress = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Find the address to delete
@@ -311,7 +364,7 @@ exports.deleteUserAddress = asyncHandler(async (req, res) => {
     );
 
     if (addressIndex === -1) {
-      return res.status(404).json({ message: 'Address not found' });
+      return res.status(404).json({ message: "Address not found" });
     }
 
     const addressToDelete = user.addresses[addressIndex];
@@ -335,11 +388,11 @@ exports.deleteUserAddress = asyncHandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Address deleted successfully',
+      message: "Address deleted successfully",
     });
   } catch (error) {
-    console.error('Error deleting user address:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error deleting user address:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -354,14 +407,14 @@ exports.setDefaultAddress = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Find the address to set as default
     const address = user.addresses.find((addr) => addr.id === addressId);
 
     if (!address) {
-      return res.status(404).json({ message: 'Address not found' });
+      return res.status(404).json({ message: "Address not found" });
     }
 
     // Update addresses - set the specified address as default and others of same type as non-default
@@ -376,10 +429,10 @@ exports.setDefaultAddress = asyncHandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Default address updated successfully',
+      message: "Default address updated successfully",
     });
   } catch (error) {
-    console.error('Error setting default address:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error setting default address:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
