@@ -43,8 +43,8 @@ const generateInvoiceAndUpload = (order) => {
     doc.text("GSTIN : 09ACUPT6154G1ZV", { align: "right" });
     doc.moveDown(2);
 
-    // Invoice Title
-    doc.fontSize(18).text("INVOICE", { align: "center" });
+    doc.fontSize(20).text("ORDER INVOICE", { align: "left" });
+
     doc.moveDown();
 
     doc.fontSize(12);
@@ -53,66 +53,43 @@ const generateInvoiceAndUpload = (order) => {
     doc.text(`Payment Method: ${order.payment_method}`);
     doc.moveDown();
 
-    // Table Headers
-    doc.font("Helvetica-Bold");
-    doc.text("Product", 50, doc.y, { width: 250, continued: true });
-    doc.text("Qty", 310, doc.y, {
-      width: 50,
-      continued: true,
-      align: "center",
-    });
-    doc.text("Unit Price", 370, doc.y, {
-      width: 80,
-      continued: true,
-      align: "right",
-    });
-    doc.text("Total", 460, doc.y, { width: 80, align: "right" });
-    doc.moveDown();
+    const tableTop = doc.y;
+    const itemX = 50;
+    const qtyX = 330;
+    const priceX = 400;
+    const rowHeight = 25;
+    const tableWidth = 500;
 
+    // Header Box
+    doc.rect(itemX, tableTop, tableWidth, rowHeight).stroke();
+    doc.font("Helvetica-Bold").fillColor("black");
+    doc.text("Product Name", itemX + 5, tableTop + 7);
+    doc.text("Qty", qtyX + 5, tableTop + 7);
+    doc.text("Unit Price", priceX + 5, tableTop + 7);
+
+    // Product Rows
+    let y = tableTop + rowHeight;
     doc.font("Helvetica");
-
-    // Order Items in Table Format
     order.order_items.forEach((item) => {
-      doc.text(item.name, 50, doc.y, {
-        width: 250,
-        ellipsis: true,
-        continued: true,
-      });
-      doc.text(`${item.units}`, 310, doc.y, {
-        width: 50,
-        continued: true,
-        align: "center",
-      });
-      doc.text(`Rs. ${item.selling_price}`, 370, doc.y, {
-        width: 80,
-        continued: true,
-        align: "right",
-      });
-      doc.text(
-        `Rs. ${(item.selling_price * item.units).toFixed(2)}`,
-        460,
-        doc.y,
-        { width: 80, align: "right" }
-      );
-      doc.moveDown();
+      doc.rect(itemX, y, tableWidth, rowHeight).stroke();
+      doc.text(item.name, itemX + 5, y + 7);
+      doc.text(item.units.toString(), qtyX + 5, y + 7);
+      doc.text(`Rs. ${item.selling_price}`, priceX + 5, y + 7);
+      y += rowHeight;
     });
+
     doc.moveDown();
 
-    // Summary Section
+    // Totals section
     doc.font("Helvetica-Bold");
-    doc.text(`Subtotal: Rs. ${order.sub_total}`, 400, doc.y, {
-      align: "right",
-    });
-    doc.text(`Shipping: Rs. ${order.shipping_charges}`, 400, doc.y, {
-      align: "right",
-    });
+    doc.text(`Subtotal: Rs. ${order.sub_total}`, { align: "right" });
+    doc.text(`Shipping: Rs. ${order.shipping_charges}`, { align: "right" });
     doc.text(
       `Total: Rs. ${Number(order.sub_total) + Number(order.shipping_charges)}`,
-      400,
-      doc.y,
-      { align: "right" }
+      {
+        align: "right",
+      }
     );
-    doc.moveDown(2);
 
     // Billing Details
     doc.fontSize(12).font("Helvetica");

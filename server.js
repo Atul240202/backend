@@ -15,7 +15,7 @@ const reviewRoutes = require("./routes/reviewRoutes");
 const phonepeRoutes = require("./routes/phonepeRoutes");
 const {
   scheduleTokenRefresh,
-  scheduleFailedIntegrationCheck,
+  // scheduleFailedIntegrationCheck,
 } = require("./utils/scheduler");
 const cookieParser = require("cookie-parser");
 const imageUploadRoute = require("./routes/imageUploadRoute");
@@ -83,5 +83,5 @@ app.listen(PORT, () => {
   scheduleTokenRefresh();
 
   // Schedule failed integration check
-  scheduleFailedIntegrationCheck();
+  // scheduleFailedIntegrationCheck();
 });

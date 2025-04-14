@@ -26,7 +26,7 @@ const productSchema = new mongoose.Schema({
   date_on_sale_to_gmt: { type: String, default: null },
   on_sale: { type: Boolean },
   purchasable: { type: Boolean },
-  total_sales: { type: Number },
+  total_sales: { type: Number, default: 0 },
   virtual: { type: Boolean },
   downloadable: { type: Boolean },
   downloads: [{ type: Object }],

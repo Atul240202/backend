@@ -1,6 +1,6 @@
 const axios = require("axios");
 const ShipRocketToken = require("../models/ShipRocketToken");
-
+const FinalOrder = require("../models/FinalOrder");
 // Get active token or generate a new one
 exports.getActiveToken = async () => {
   try {
@@ -78,6 +78,8 @@ exports.createOrder = async (orderData) => {
       }
     );
 
+    console.log("response for wrong data", response);
+
     // Parse response
     const data = await response.json();
     // Check if response is successful
@@ -99,31 +101,34 @@ exports.createOrder = async (orderData) => {
 };
 
 // Assign AWB to shipment
-exports.assignAWB = async (shipmentId, courierId) => {
-  try {
-    // Get active token
-    const token = await this.getActiveToken();
+exports.assignAWB = async (shipment_id, courier_id = null, status = "") => {
+  const token = await this.getActiveToken();
 
-    // Make API request to assign AWB
-    const response = await axios.post(
-      `${process.env.SHIPROCKET_API_URL}/courier/assign/awb`,
-      {
-        shipment_id: shipmentId,
-        courier_id: courierId,
+  const body = {
+    shipment_id,
+    ...(courier_id && { courier_id }),
+    ...(status && { status }),
+  };
+
+  const response = await fetch(
+    "https://apiv2.shiprocket.in/v1/external/courier/assign/awb",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+      body: JSON.stringify(body),
+    }
+  );
 
-    return response.data;
-  } catch (error) {
-    console.error("Error assigning AWB:", error);
-    throw new Error("Failed to assign AWB");
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Shiprocket AWB Assignment failed: ${error}`);
   }
+
+  const data = await response.json();
+  return data;
 };
 
 // Get available courier services
@@ -162,14 +167,14 @@ exports.getAvailableCouriers = async (
 };
 
 // Track shipment
-exports.trackShipment = async (awbCode) => {
+exports.trackShipment = async (orderId) => {
   try {
     // Get active token
     const token = await this.getActiveToken();
 
     // Make API request to track shipment
     const response = await axios.get(
-      `${process.env.SHIPROCKET_API_URL}/courier/track/awb/${awbCode}`,
+      `${process.env.SHIPROCKET_API_URL}/courier/track?order_id=${orderId}&channel_id=${process.env.SHIPROCKET_CHANNEL_ID}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -204,25 +209,177 @@ exports.refreshToken = async (req, res) => {
 };
 
 // Function to fetch order details from ShipRocket
-exports.getShipRocketOrder = async (orderId) => {
-  try {
-    const token = await this.getActiveToken();
+// exports.getShipRocketOrder = async (orderId) => {
+//   try {
+//     const token = await this.getActiveToken();
 
-    const response = await axios.get(
-      `${SHIPROCKET_API_URL}/orders/${orderId}`,
+//     const response = await axios.get(
+//       `${SHIPROCKET_API_URL}/orders/${orderId}`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${token}`,
+//         },
+//       }
+//     );
+
+//     return response.data.data;
+//   } catch (error) {
+//     console.error(
+//       `Error fetching ShipRocket order details for order ID ${orderId}:`,
+//       error
+//     );
+//     throw new Error("Failed to fetch ShipRocket order details");
+//   }
+// };
+
+exports.cancelShipments = async (awbList = []) => {
+  const token = await this.getActiveToken();
+
+  const awbs = Array.isArray(awbList) ? awbList : [awbList];
+
+  try {
+    const response = await axios.post(
+      `${process.env.SHIPROCKET_API_URL}/orders/cancel/shipment/awbs`,
+      { awbs },
       {
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       }
     );
 
-    return response.data.data;
-  } catch (error) {
-    console.error(
-      `Error fetching ShipRocket order details for order ID ${orderId}:`,
-      error
+    await FinalOrder.updateMany(
+      { awbCode: { $in: awbs } },
+      { $set: { status: "cancelled" } }
     );
-    throw new Error("Failed to fetch ShipRocket order details");
+
+    console.log("Cancelled FinalOrders with AWBs:", awbs);
+
+    return response.data;
+  } catch (error) {
+    console.error("Cancel AWB error:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || "AWB cancellation failed");
   }
+};
+
+exports.cancelOrderByOrderId = async (orderIds = []) => {
+  const token = await this.getActiveToken();
+
+  const idsArray = Array.isArray(orderIds) ? orderIds : [orderIds];
+
+  try {
+    const response = await axios.post(
+      `${process.env.SHIPROCKET_API_URL}/orders/cancel`,
+      { ids: idsArray },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    await FinalOrder.updateMany(
+      { shipRocketOrderId: { $in: idsArray } },
+      { $set: { status: "cancelled" } }
+    );
+
+    console.log("Cancelled FinalOrders with IDs:", idsArray);
+
+    return response.data;
+  } catch (error) {
+    console.error("Cancel error:", error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message || "User cancellation failed"
+    );
+  }
+};
+
+exports.generateManifest = async (shipmentIds = []) => {
+  const token = await this.getActiveToken();
+  const response = await axios.post(
+    `${process.env.SHIPROCKET_API_URL}/manifests/generate`,
+    { shipment_id: Array.isArray(shipmentIds) ? shipmentIds : [shipmentIds] },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
+};
+
+exports.printManifest = async (orderIds = []) => {
+  const token = await this.getActiveToken();
+  const response = await axios.post(
+    `${process.env.SHIPROCKET_API_URL}/manifests/print`,
+    { order_ids: Array.isArray(orderIds) ? orderIds : [orderIds] },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
+};
+
+exports.generateLabel = async (shipmentIds = []) => {
+  const token = await this.getActiveToken();
+  const response = await axios.post(
+    `${process.env.SHIPROCKET_API_URL}/courier/generate/label`,
+    { shipment_id: Array.isArray(shipmentIds) ? shipmentIds : [shipmentIds] },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
+};
+
+exports.generateInvoice = async (orderIds = []) => {
+  const token = await this.getActiveToken();
+  const response = await axios.post(
+    `${process.env.SHIPROCKET_API_URL}/orders/print/invoice`,
+    { ids: Array.isArray(orderIds) ? orderIds : [orderIds] },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
+};
+
+exports.getShiprocketOrderDetails = async (orderId) => {
+  const token = await this.getActiveToken();
+  const response = await axios.get(
+    `${process.env.SHIPROCKET_API_URL}/orders/show/${orderId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
+};
+
+exports.createReturnOrder = async (returnData) => {
+  const token = await this.getActiveToken();
+  const response = await axios.post(
+    `${process.env.SHIPROCKET_API_URL}/orders/create/return`,
+    returnData,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  return response.data;
 };

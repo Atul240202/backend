@@ -4,6 +4,7 @@ const shipRocketController = require("./shipRocketController");
 const sendEmail = require("../utils/sendEmail");
 const generateInvoiceAndUpload = require("../utils/generateInvoiceAndUpload");
 const { processPhonePePayment } = require("../utils/phonepeUtils");
+const Product = require("../models/Product");
 
 // @desc    Get ShipRocket order details by ID
 // @route   GET /api/shiprocket/orders/:id
@@ -80,6 +81,25 @@ function buildShipRocketOrderData(orderData) {
   };
 }
 
+// For incrementing total sales by one
+async function incrementProductSales(orderItems) {
+  for (const item of orderItems) {
+    const units = parseInt(item.units) || 1;
+    const productId = item._id?.$oid || item._id || item.id; // fallback check
+
+    if (!productId || productId.length < 24) {
+      console.warn("Invalid product ID for sales increment:", productId);
+      continue;
+    }
+
+    await Product.findByIdAndUpdate(
+      productId,
+      { $inc: { total_sales: units } },
+      { new: true }
+    );
+  }
+}
+
 //for creating order via phonepe payment
 exports.createFinalOrderFromTransaction = async (
   orderData,
@@ -103,6 +123,7 @@ exports.createFinalOrderFromTransaction = async (
   };
   try {
     const invoiceUrl = await handleShiprocketAndInvoice(orderData, finalOrder);
+    await incrementProductSales(orderData.order_items);
     await sendOrderConfirmationMail(orderData, finalOrder, invoiceUrl);
     return {
       success: true,
@@ -144,6 +165,7 @@ exports.createFinalOrder = async (req, res) => {
     }
 
     const invoiceUrl = await handleShiprocketAndInvoice(orderData, finalOrder);
+    await incrementProductSales(orderData.order_items);
     await sendOrderConfirmationMail(orderData, finalOrder, invoiceUrl);
 
     return res.status(201).json({
@@ -200,10 +222,10 @@ async function createOrderRecord(orderData, userId) {
 async function handleShiprocketAndInvoice(orderData, finalOrder) {
   try {
     const shipRocketOrderData = buildShipRocketOrderData(orderData);
-
     const shipRocketResponse = await shipRocketController.createOrder(
       shipRocketOrderData
     );
+
     finalOrder.shipRocketOrderId = shipRocketResponse.order_id;
     finalOrder.shipRocketShipmentId = shipRocketResponse.shipment_id;
     finalOrder.shipRocketApiStatus = {
@@ -217,21 +239,43 @@ async function handleShiprocketAndInvoice(orderData, finalOrder) {
     finalOrder.invoiceUrl = invoiceUrl;
     await finalOrder.save();
 
-    // Optionally handle commented courier logic here if needed in future
     if (process.env.ASSIGN_COURIER === "true") {
       await assignPreferredCourier(finalOrder, shipRocketResponse);
     }
 
     return invoiceUrl;
   } catch (shipRocketError) {
-    console.error("Error processing ShipRocket integration:", shipRocketError);
-    finalOrder.shipRocketApiStatus = {
-      success: false,
-      statusCode: shipRocketError.response?.status || 500,
-      message: shipRocketError.message || "Failed to create ShipRocket order",
-    };
-    await finalOrder.save();
-    return null;
+    console.error("ShipRocket Error:", shipRocketError);
+    const reason =
+      shipRocketError?.message ||
+      shipRocketError?.response?.statusText ||
+      "Unknown ShipRocket failure";
+
+    // Create unprocessed order
+    await UnprocessedOrder.create({
+      userId: finalOrder.user,
+      products: orderData.order_items,
+      shippingAddress: {
+        ...orderData.shipping_address,
+        phone: orderData.shipping_phone,
+      },
+      billingAddress: {
+        ...orderData.billing_address,
+        phone: orderData.billing_phone,
+      },
+      subtotal: orderData.sub_total,
+      shipping: orderData.shipping_charges,
+      total:
+        parseFloat(orderData.sub_total) +
+        parseFloat(orderData.shipping_charges || 0),
+      reason: `ShipRocket failed: ${reason}`,
+      tempId: orderData.unprocessed_order_id || Date.now().toString(),
+    });
+
+    // Remove the failed finalOrder
+    await FinalOrder.findByIdAndDelete(finalOrder._id);
+
+    throw new Error(`ShipRocket order failed: ${reason}`);
   }
 }
 
@@ -364,7 +408,7 @@ exports.verifyPhonePePayment = async (req, res) => {
       await require("../utils/phonepeUtils").getPhonePeAccessToken();
 
     const response = await fetch(
-      `${process.env.PHONEPE_API_URL}/pg-sandbox/checkout/v1/status/${transactionId}?merchantId=${process.env.PHONEPE_CLIENT_ID}`,
+      `${process.env.PHONEPE_API_URL}/pg-sandbox/checkout/v1/status/${transactionId}?merchantId=${process.env.PHONEPE_MERCHANT_ID}`,
       {
         method: "GET",
         headers: {
@@ -686,7 +730,7 @@ exports.trackShipment = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const finalOrder = await FinalOrder.findById(id);
+    const finalOrder = await FinalOrder.findOne({ order_id: id });
 
     if (!finalOrder) {
       return res.status(404).json({
@@ -695,15 +739,8 @@ exports.trackShipment = async (req, res) => {
       });
     }
 
-    if (!finalOrder.awbCode) {
-      return res.status(400).json({
-        success: false,
-        message: "No AWB code available for tracking",
-      });
-    }
-
     const trackingData = await shipRocketController.trackShipment(
-      finalOrder.awbCode
+      finalOrder.order_id
     );
 
     res.status(200).json({
@@ -715,6 +752,61 @@ exports.trackShipment = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to track shipment",
+      error: error.message,
+    });
+  }
+};
+
+exports.assignCourierToOrder = async (req, res) => {
+  try {
+    const { id } = req.params; // FinalOrder ID
+    const finalOrder = await FinalOrder.findById(id);
+
+    if (!finalOrder) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+    }
+
+    if (
+      finalOrder.status === "cancelled" ||
+      finalOrder.shipmentStatus === "shipped" ||
+      finalOrder.shipmentStatus === "AWB_ASSIGNED"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Order already shipped, cancelled, or AWB assigned",
+      });
+    }
+
+    const shipmentId = finalOrder.shipRocketShipmentId;
+    if (!shipmentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing ShipRocket shipment ID",
+      });
+    }
+
+    // Call ShipRocket to assign AWB (courier)
+    const awbResponse = await shipRocketController.assignAWB(shipmentId);
+
+    // Update finalOrder with courier details
+    finalOrder.awbCode = awbResponse.awb_code;
+    finalOrder.courierId = awbResponse.courier_id;
+    finalOrder.trackingUrl = awbResponse.tracking_url;
+    finalOrder.shipmentStatus = "AWB_ASSIGNED";
+    await finalOrder.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Courier assigned and AWB generated successfully",
+      data: finalOrder,
+    });
+  } catch (error) {
+    console.error("Error assigning courier:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to assign courier",
       error: error.message,
     });
   }
@@ -746,308 +838,182 @@ async function assignPreferredCourier(finalOrder, shipRocketResponse) {
   }
 }
 
-// Create a new final order (Not in use but kept for if something goes wrong with the updated one)
-// exports.createFinalOrder = async (req, res) => {
-//   try {
-//     const orderData = req.body;
+exports.getInvoiceByOrderId = async (req, res) => {
+  try {
+    const { order_id } = req.params;
+    const finalOrder = await FinalOrder.findOne({ order_id });
 
-//     // Add user reference to the order
-//     orderData.user = req.user.id;
-//     orderData.status = "pending";
-//     // Create the final order
-//     const finalOrder = new FinalOrder({
-//       ...orderData,
-//       shipRocketApiStatus: {
-//         success: false,
-//         statusCode: null,
-//         message: "ShipRocket API not triggered yet",
-//       },
-//     });
+    if (!finalOrder) {
+      return res.status(404).json({
+        success: false,
+        message: "Final order not found",
+      });
+    }
 
-//     await finalOrder.save();
+    const isUserRoute = req.originalUrl.includes("/user/invoice");
 
-//     // If there's an unprocessed order ID, delete it
-//     if (orderData.unprocessed_order_id) {
-//       await UnprocessedOrder.findOneAndDelete({
-//         tempId: orderData.unprocessed_order_id,
-//       });
-//     }
+    if (isUserRoute && finalOrder.user.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access to this invoice",
+      });
+    }
 
-//     if (orderData.payment_method === "PhonePe") {
-//       const transactionId =
-//         "TXN" + Date.now() + Math.floor(Math.random() * 1000);
-//       finalOrder.phonepeTransactionId = transactionId;
-//       await finalOrder.save();
+    if (!finalOrder.invoiceUrl) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not available for this order",
+      });
+    }
 
-//       const { redirectUrl } = await processPhonePePayment(
-//         finalOrder,
-//         transactionId
-//       );
+    return res.status(200).json({
+      success: true,
+      invoiceUrl: finalOrder.invoiceUrl,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching invoice",
+      error: err.message,
+    });
+  }
+};
 
-//       return res.status(202).json({
-//         success: true,
-//         message: "PhonePe payment initiated",
-//         redirectUrl,
-//         transactionId,
-//         orderId: finalOrder.order_id,
-//       });
-//     }
+exports.cancelFinalOrderWithRefund = async (req, res) => {
+  try {
+    const { ids: order_id } = req.body;
+    const finalOrder = await FinalOrder.findOne({
+      shipRocketOrderId: order_id,
+    });
+    console.log("Final order data:", finalOrder, req.body);
+    if (!finalOrder) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+    }
 
-//     // Create order in ShipRocket
-//     try {
-//       // Format order data for ShipRocket
-//       const shipRocketOrderData = {
-//         order_id: orderData.order_id,
-//         order_date: orderData.order_date,
-//         pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || "Home",
-//         channel_id: orderData.channel_id || "",
-//         comment: orderData.comment || "Order created via API",
-//         reseller_name: orderData.comment || "",
-//         company_name: orderData.company_name || "",
-//         // gst_number: orderData.gst_number || "",
-//         billing_customer_name: orderData.billing_customer_name,
-//         billing_last_name: orderData.billing_last_name,
-//         billing_address: orderData.billing_address,
-//         billing_address_2: orderData.billing_address_2 || "",
-//         billing_isd_code: orderData.billing_isd_code || "91",
-//         billing_city: orderData.billing_city,
-//         billing_pincode: orderData.billing_pincode,
-//         billing_state: orderData.billing_state,
-//         billing_country: orderData.billing_country,
-//         billing_email: orderData.billing_email,
-//         billing_phone: orderData.billing_phone,
-//         billing_alternate_phone: orderData.billing_alternate_phone || "",
-//         shipping_is_billing: orderData.shipping_is_billing || true,
-//         shipping_customer_name: orderData.shipping_customer_name,
-//         shipping_last_name: orderData.shipping_last_name,
-//         shipping_address: orderData.shipping_address,
-//         shipping_address_2: orderData.shipping_address_2 || "",
-//         shipping_city: orderData.shipping_city,
-//         shipping_pincode: orderData.shipping_pincode,
-//         shipping_state: orderData.shipping_state,
-//         shipping_country: orderData.shipping_country,
-//         shipping_email: orderData.shipping_email,
-//         shipping_phone: orderData.shipping_phone,
-//         order_items: orderData.order_items,
-//         payment_method:
-//           orderData.payment_method === "COD" ? "COD" : "Prepaid",
-//         shipping_charges: orderData.shipping_charges || "200",
-//         giftwrap_charges: orderData.giftwrap_charges || "0",
-//         transaction_charges: orderData.transaction_charges || "0",
-//         total_discount: orderData.total_discount || "0",
-//         sub_total: (
-//           Number(orderData.sub_total) + Number(orderData.shipping_charges)
-//         ).toString(),
-//         length: orderData.length || "10",
-//         breadth: orderData.breadth || "10",
-//         height: orderData.height || "10",
-//         weight: orderData.weight || "0.5",
-//         ewaybill_no: orderData.ewaybill_no || "",
-//         customer_gstin: orderData.gst_number || "",
-//         invoice_number: orderData.invoice_number || "",
-//         order_type: orderData.order_type || "ESSENTIALS",
-//       };
+    if (finalOrder.status === "cancelled") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Order already cancelled" });
+    }
 
-//       // Create ShipRocket order
-//       shipRocketResponse = await shipRocketController.createOrder(
-//         shipRocketOrderData
-//       );
-//       // Update order with ShipRocket data
-//       finalOrder.shipRocketOrderId = shipRocketResponse.order_id;
-//       finalOrder.shipRocketShipmentId = shipRocketResponse.shipment_id;
-//       // Update ShipRocket API status to success
-//       finalOrder.shipRocketApiStatus = {
-//         success: true,
-//         statusCode: 200,
-//         message: "ShipRocket order created successfully",
-//       };
+    // Step 1: Cancel on ShipRocket
+    let cancelResult;
+    if (finalOrder.awbCode) {
+      cancelResult = await shipRocketController.cancelShipments([
+        finalOrder.awbCode,
+      ]);
+    } else {
+      cancelResult = await shipRocketController.cancelOrderByOrderId([
+        finalOrder.shipRocketOrderId,
+      ]);
+    }
 
-//       // Save updated order
-//       await finalOrder.save();
-//       // Generate invoice
-//       const invoiceUrl = await generateInvoiceAndUpload(finalOrder);
-//       finalOrder.invoiceUrl = invoiceUrl;
-//       await finalOrder.save();
+    if (!cancelResult || cancelResult.status !== 200) {
+      return res
+        .status(422)
+        .json({ success: false, message: "ShipRocket cancellation failed" });
+    }
 
-//       if (!orderData.shipping_email) {
-//         throw new Error("Missing recipient email address (shipping_email).");
-//       }
+    // Step 2: Update order status locally
+    finalOrder.status = "cancelled";
+    await finalOrder.save();
 
-//       await sendEmail({
-//         email:
-//           orderData.shipping_email?.trim() || orderData.billing_email?.trim(),
-//         subject: `Industrywaala - Order Confirmation - #${orderData.order_id}`,
-//         message: `
-//         <table style="width: 100%; font-family: Arial, sans-serif; border-collapse: collapse;">
-//         <tr>
-//         <td style="background-color: #f7f7f7; padding: 20px; text-align: center;">
-//         <h1 style="color: #333;">Thank you for your order!</h1>
-//         </td>
-//         </tr>
-//         <tr>
-//         <td style="padding: 20px;">
-//         <p style="font-size: 16px; color: #555;">Dear ${
-//           orderData.shipping_customer_name || orderData.billing_customer_name
-//         },</p>
-//         <p style="font-size: 16px; color: #555;">We're excited to let you know that your order #${
-//           orderData.order_id
-//         } has been successfully placed and is now being processed.</p>
-//         <h2 style="color: #333; margin-top: 30px;">Order Details:</h2>
-//         <p style="font-size: 16px; color: #555;"><strong>Order ID:</strong> ${
-//           orderData.order_id
-//         }</p>
-//         <p style="font-size: 16px; color: #555;"><strong>Order Date:</strong> ${new Date(
-//           orderData.order_date
-//         ).toLocaleDateString()}</p>
-//         <h3 style="color: #333; margin-top: 20px;">Shipping Address:</h3>
-//         <p style="font-size: 16px; color: #555;">
-//         ${orderData.shipping_customer_name} ${orderData.shipping_last_name}<br>
-//         ${orderData.shipping_address}<br>
-//         ${
-//           orderData.shipping_address_2
-//             ? orderData.shipping_address_2 + "<br>"
-//             : ""
-//         }
-//         ${orderData.shipping_city}, ${orderData.shipping_state} ${
-//           orderData.shipping_pincode
-//         }<br>
-//         ${orderData.shipping_country}
-//         </p>
-//         <h3 style="color: #333; margin-top: 20px;">Billing Address:</h3>
-//         <p style="font-size: 16px; color: #555;">
-//         ${orderData.billing_customer_name} ${orderData.billing_last_name}<br>
-//         ${orderData.billing_address}<br>
-//         ${
-//           orderData.billing_address_2
-//             ? orderData.billing_address_2 + "<br>"
-//             : ""
-//         }
-//         ${orderData.billing_city}, ${orderData.billing_state} ${
-//           orderData.billing_pincode
-//         }<br>
-//         ${orderData.billing_country}
-//         </p>
-//         <h3 style="color: #333; margin-top: 20px;">Items in your order:</h3>
-//         <ul style="list-style: none; padding: 0;">
-//         ${orderData.order_items
-//           .map(
-//             (item) => `
-//         <li style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">
-//         <strong>${item.name}</strong> x ${item.units}
-//         <span style="float: right;">₹${item.selling_price * item.units}</span>
-//          </li>
-//         `
-//           )
-//           .join("")}
-//         </ul>
-//         <p style="font-size: 16px; color: #555;"><strong>Subtotal:</strong> <span style="float: right;">₹${
-//           orderData.sub_total
-//         }</span></p>
-//         ${
-//           orderData.total_discount && parseFloat(orderData.total_discount) > 0
-//             ? `<p style="font-size: 16px; color: #555;"><strong>Discount:</strong> <span style="float: right;">-₹${parseFloat(
-//                 orderData.total_discount
-//               )}</span></p>`
-//             : ""
-//         }
-//         ${
-//           orderData.shipping_charges &&
-//           parseFloat(orderData.shipping_charges) > 0
-//             ? `<p style="font-size: 16px; color: #555;"><strong>Shipping Charges:</strong> <span style="float: right;">₹${parseFloat(
-//                 orderData.shipping_charges
-//               )}</span></p>`
-//             : `<p style="font-size: 16px; color: #555;"><strong>Shipping Charges:</strong> <span style="float: right;">Free</span></p>`
-//         }
-//         ${
-//           orderData.transaction_charges &&
-//           parseFloat(orderData.transaction_charges) > 0
-//             ? `<p style="font-size: 16px; color: #555;"><strong>Transaction Charges:</strong> <span style="float: right;">₹${parseFloat(
-//                 orderData.transaction_charges
-//               )}</span></p>`
-//             : ""
-//         }
-//         <p style="font-size: 18px; color: #333; font-weight: bold;">Order Total: <span style="float: right;">₹${
-//           parseFloat(orderData.sub_total) +
-//           (parseFloat(orderData.shipping_charges) || 0) +
-//           (parseFloat(orderData.transaction_charges) || 0) -
-//           (parseFloat(orderData.total_discount) || 0)
-//         }</span></p>
-//         <p style="font-size: 16px; color: #555; margin-top: 30px;">You can download your invoice here: <a href="${invoiceUrl}" style="color: #007bff; text-decoration: none;">View Invoice</a></p>
-//         <p style="font-size: 16px; color: #555;"><strong>You can stay updated about your order from the Order section on your account page.</strong></p>
-//         <p style="font-size: 16px; color: #555; margin-top: 30px;">Thank you again for choosing Industrywaala!</p>
-//          <p style="font-size: 16px; color: #555;">Sincerely,<br>The Industrywaala Team</p>
-//          </td>
-//         </tr>
-//         <tr>
-//          <td style="background-color: #f7f7f7; padding: 10px; text-align: center; font-size: 12px; color: #777;">
-//         This is an automatically generated email. Please do not reply to this message.
-//         </td>
-//         </tr>
-//         </table>
-//         `,
-//       });
-//       // // Get available couriers for automatic selection
-//       // const availableCouriers = await shipRocketController.getAvailableCouriers(
-//       //   process.env.SHIPROCKET_PICKUP_PINCODE || '110001', // Default or configured pickup pincode
-//       //   orderData.shipping_pincode,
-//       //   orderData.weight || '0.5',
-//       //   orderData.payment_method === 'COD'
-//       // );
+    // Step 3: Process refund if payment was via PhonePe
+    if (
+      finalOrder.payment_method === "Prepaid" &&
+      finalOrder.phonepeTransactionId
+    ) {
+      const refundResponse = await processPhonePeRefund(
+        finalOrder.phonepeTransactionId
+      );
 
-//       // // Select the first available courier
-//       // if (
-//       //   availableCouriers &&
-//       //   availableCouriers.data &&
-//       //   availableCouriers.data.available_courier_companies &&
-//       //   availableCouriers.data.available_courier_companies.length > 0
-//       // ) {
-//       //   const selectedCourier =
-//       //     availableCouriers.data.available_courier_companies[0];
+      if (refundResponse.success) {
+        return res.status(200).json({
+          success: true,
+          message: "Order cancelled and refund processed",
+        });
+      } else {
+        return res.status(200).json({
+          success: true,
+          message:
+            "Order cancelled but refund failed. Please connect to admins via Contact form",
+        });
+      }
+    }
 
-//       //   // Assign AWB
-//       //   const awbResponse = await shipRocketController.assignAWB(
-//       //     shipRocketResponse.shipment_id,
-//       //     selectedCourier.courier_company_id
-//       //   );
+    return res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+    });
+  } catch (error) {
+    console.error("Cancel & Refund Error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
-//       //   // Update order with AWB and courier details
-//       //   finalOrder.awbCode = awbResponse.awb_code;
-//       //   finalOrder.courierId = selectedCourier.courier_company_id;
-//       //   finalOrder.courierName = selectedCourier.courier_name;
-//       //   finalOrder.trackingUrl = awbResponse.tracking_url || '';
-//       //   finalOrder.shipmentStatus = 'AWB_ASSIGNED';
+async function processPhonePeRefund(transactionId) {
+  try {
+    const order = await FinalOrder.findOne({
+      phonepeTransactionId: transactionId,
+    });
 
-//       //   // Save updated order
-//       //   await finalOrder.save();
-//       // }
-//     } catch (shipRocketError) {
-//       console.error(
-//         "Error processing ShipRocket integration:",
-//         shipRocketError
-//       );
-//       // Continue with order creation even if ShipRocket fails
-//       // Update ShipRocket API status to failure
-//       finalOrder.shipRocketApiStatus = {
-//         success: false,
-//         statusCode: shipRocketError.response?.status || 500,
-//         message: shipRocketError.message || "Failed to create ShipRocket order",
-//       };
+    if (!order) throw new Error("Order not found for refund");
 
-//       // Save updated order with error status
-//       await finalOrder.save();
-//     }
+    const refundAmount =
+      parseFloat(order.sub_total || 0) +
+      parseFloat(order.shipping_charges || 0);
 
-//     res.status(201).json({
-//       success: true,
-//       data: finalOrder,
-//       message: "Order created successfully",
-//     });
-//   } catch (error) {
-//     console.error("Error creating final order:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to create order",
-//       error: error.message,
-//     });
-//   }
-// };
+    const refundPayload = {
+      merchantId: process.env.PHONEPE_MERCHANT_ID,
+      transactionId: transactionId,
+      merchantUserId: order.user.toString(),
+      merchantTransactionId: "REF" + Date.now(),
+      amount: Math.round(refundAmount * 100), // in paise
+      callbackUrl: "", // optional
+      message: "User requested cancellation refund",
+    };
+
+    const payloadBase64 = Buffer.from(JSON.stringify(refundPayload)).toString(
+      "base64"
+    );
+
+    const rawSignature =
+      payloadBase64 + "/pg/v1/refund" + process.env.PHONEPE_SALT_KEY;
+    const sha256 = crypto
+      .createHash("sha256")
+      .update(rawSignature)
+      .digest("hex");
+    const xVerify = sha256 + "###" + process.env.PHONEPE_SALT_INDEX;
+
+    const response = await fetch(
+      `${process.env.PHONEPE_API_URL}/pg/v1/refund`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-VERIFY": xVerify,
+        },
+        body: JSON.stringify({ request: payloadBase64 }),
+      }
+    );
+    console.log("response from phonepe", response);
+    const result = await response.json();
+
+    if (result.success && result.code === "REFUND_INITIATED") {
+      console.log("Refund initiated successfully:", result);
+      return { success: true, message: "Refund initiated", data: result };
+    } else {
+      console.error("Refund failed:", result);
+      return {
+        success: false,
+        message: result.message || "Refund failed",
+        data: result,
+      };
+    }
+  } catch (error) {
+    console.error("Refund error:", error.message);
+    return { success: false, message: error.message };
+  }
+}

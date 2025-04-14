@@ -35,9 +35,6 @@ const generateXVerify = (base64Payload, saltKey) => {
 
 const processPhonePePayment = async (orderData, transactionId) => {
   // const accessToken = await getPhonePeAccessToken();
-  // console.log("getPhonePeAccessToken", accessToken);
-
-  console.log("Order data", orderData);
 
   const payload = {
     merchantId: process.env.PHONEPE_MERCHANT_ID,
@@ -58,8 +55,6 @@ const processPhonePePayment = async (orderData, transactionId) => {
       type: "PAY_PAGE",
     },
   };
-
-  console.log("Payload", payload);
 
   // Check validations based on PhonePe constraints
   if (!payload.merchantId || payload.merchantId.length > 38)
@@ -93,10 +88,6 @@ const processPhonePePayment = async (orderData, transactionId) => {
   const text = await response.text();
   try {
     const data = JSON.parse(text);
-    console.log(
-      "PhonePe Initiated Response",
-      data.data.instrumentResponse.redirectInfo
-    );
 
     if (!data.success || !data.data || !data.data.instrumentResponse) {
       throw new Error(data.message || "PhonePe request failed");

@@ -36,7 +36,6 @@ exports.verifyPhonePePayment = async (req, res) => {
     );
 
     const result = await response.json();
-    console.log("Order finaling result", result);
     const status = result?.data?.state;
 
     if (status === "COMPLETED") {

@@ -78,7 +78,7 @@ const deleteProduct = asyncHandler(async (req, res) => {
 // @route   GET /api/products
 // @access  Public
 const getProducts = asyncHandler(async (req, res) => {
-  const pageSize = 12;
+  const pageSize = 50;
   const page = Number(req.query.pageNumber) || 1;
 
   const keyword = req.query.keyword
@@ -116,7 +116,6 @@ const getDraftProducts = asyncHandler(async (req, res) => {
   const products = await Product.find({ status: "draft" }).sort({
     createdAt: -1,
   });
-
   res.json({
     products,
     total: products.length,
@@ -152,7 +151,7 @@ const searchProductsByKeyword = asyncHandler(async (req, res) => {
 // @route   GET /api/products/search
 // @access  Public
 const searchBranchProducts = asyncHandler(async (req, res) => {
-  const pageSize = Number(req.query.limit) || 12;
+  const pageSize = Number(req.query.limit) || 50;
   const page = Number(req.query.page) || 1;
   const keyword = req.query.keyword || "";
 
@@ -202,7 +201,7 @@ const getProductById = asyncHandler(async (req, res) => {
 // @route   GET /api/products/category/:slug
 // @access  Public
 const getProductsByCategory = asyncHandler(async (req, res) => {
-  const pageSize = 12;
+  const pageSize = 50;
   const page = Number(req.query.pageNumber) || 1;
 
   const categorySlug = req.params.slug;
