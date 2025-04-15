@@ -5,6 +5,7 @@ const sendEmail = require("../utils/sendEmail");
 const generateInvoiceAndUpload = require("../utils/generateInvoiceAndUpload");
 const { processPhonePePayment } = require("../utils/phonepeUtils");
 const Product = require("../models/Product");
+const crypto = require("crypto");
 
 // @desc    Get ShipRocket order details by ID
 // @route   GET /api/shiprocket/orders/:id
@@ -85,18 +86,38 @@ function buildShipRocketOrderData(orderData) {
 async function incrementProductSales(orderItems) {
   for (const item of orderItems) {
     const units = parseInt(item.units) || 1;
-    const productId = item._id?.$oid || item._id || item.id; // fallback check
 
-    if (!productId || productId.length < 24) {
-      console.warn("Invalid product ID for sales increment:", productId);
-      continue;
+    const productId = item._id || item.id;
+
+    // If productId is an ObjectId or 24-char hex, use _id
+    if (
+      (typeof productId === "string" && productId.length === 24) ||
+      typeof productId === "object"
+    ) {
+      try {
+        await Product.findByIdAndUpdate(
+          productId,
+          { $inc: { total_sales: units } },
+          { new: true }
+        );
+      } catch (err) {
+        console.warn("Failed _id update:", err.message);
+      }
     }
-
-    await Product.findByIdAndUpdate(
-      productId,
-      { $inc: { total_sales: units } },
-      { new: true }
-    );
+    // If productId is a number, use custom id field
+    else if (typeof productId === "number") {
+      try {
+        await Product.findOneAndUpdate(
+          { id: productId },
+          { $inc: { total_sales: units } },
+          { new: true }
+        );
+      } catch (err) {
+        console.warn("Failed numeric id update:", err.message);
+      }
+    } else {
+      console.warn("Unrecognized product ID format:", productId);
+    }
   }
 }
 
@@ -885,7 +906,6 @@ exports.cancelFinalOrderWithRefund = async (req, res) => {
     const finalOrder = await FinalOrder.findOne({
       shipRocketOrderId: order_id,
     });
-    console.log("Final order data:", finalOrder, req.body);
     if (!finalOrder) {
       return res
         .status(404)
@@ -910,17 +930,13 @@ exports.cancelFinalOrderWithRefund = async (req, res) => {
       ]);
     }
 
-    if (!cancelResult || cancelResult.status !== 200) {
+    if (!cancelResult || cancelResult.status_code !== 200) {
       return res
         .status(422)
         .json({ success: false, message: "ShipRocket cancellation failed" });
     }
 
-    // Step 2: Update order status locally
-    finalOrder.status = "cancelled";
-    await finalOrder.save();
-
-    // Step 3: Process refund if payment was via PhonePe
+    // Step 2: Process refund if payment was via PhonePe
     if (
       finalOrder.payment_method === "Prepaid" &&
       finalOrder.phonepeTransactionId
@@ -928,6 +944,9 @@ exports.cancelFinalOrderWithRefund = async (req, res) => {
       const refundResponse = await processPhonePeRefund(
         finalOrder.phonepeTransactionId
       );
+      finalOrder.refund_response = refundResponse;
+      finalOrder.refund_status = refundResponse.success ? "success" : "failed";
+      await finalOrder.save();
 
       if (refundResponse.success) {
         return res.status(200).json({
@@ -942,6 +961,10 @@ exports.cancelFinalOrderWithRefund = async (req, res) => {
         });
       }
     }
+
+    // Step 3: Update order status locally
+    finalOrder.status = "cancelled";
+    await finalOrder.save();
 
     return res.status(200).json({
       success: true,
@@ -967,9 +990,9 @@ async function processPhonePeRefund(transactionId) {
 
     const refundPayload = {
       merchantId: process.env.PHONEPE_MERCHANT_ID,
-      transactionId: transactionId,
+      originalTransactionId: transactionId,
       merchantUserId: order.user.toString(),
-      merchantTransactionId: "REF" + Date.now(),
+      merchantTransactionId: "REF" + Date.now() + transactionId,
       amount: Math.round(refundAmount * 100), // in paise
       callbackUrl: "", // optional
       message: "User requested cancellation refund",
@@ -998,11 +1021,9 @@ async function processPhonePeRefund(transactionId) {
         body: JSON.stringify({ request: payloadBase64 }),
       }
     );
-    console.log("response from phonepe", response);
     const result = await response.json();
 
     if (result.success && result.code === "REFUND_INITIATED") {
-      console.log("Refund initiated successfully:", result);
       return { success: true, message: "Refund initiated", data: result };
     } else {
       console.error("Refund failed:", result);
@@ -1017,3 +1038,48 @@ async function processPhonePeRefund(transactionId) {
     return { success: false, message: error.message };
   }
 }
+
+// Route: POST /admin/retry-refund
+exports.retryRefund = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    const order = await FinalOrder.findOne({ order_id: orderId });
+    if (!order)
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+
+    if (order.refund_status === "success") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Refund already processed" });
+    }
+
+    if (order.payment_method !== "Prepaid" || !order.phonepeTransactionId) {
+      return res.status(400).json({
+        success: false,
+        message: "Refund not applicable for this order",
+      });
+    }
+
+    const refundResponse = await processPhonePeRefund(
+      order.phonepeTransactionId
+    );
+
+    order.refund_response = refundResponse;
+    order.refund_status = refundResponse.success ? "success" : "failed";
+    await order.save();
+
+    return res.status(200).json({
+      success: refundResponse.success,
+      message: refundResponse.success
+        ? "Refund re-processed successfully"
+        : "Refund retry failed",
+      data: refundResponse,
+    });
+  } catch (err) {
+    console.error("Retry Refund Error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

@@ -78,8 +78,6 @@ exports.createOrder = async (orderData) => {
       }
     );
 
-    console.log("response for wrong data", response);
-
     // Parse response
     const data = await response.json();
     // Check if response is successful
@@ -254,8 +252,6 @@ exports.cancelShipments = async (awbList = []) => {
       { $set: { status: "cancelled" } }
     );
 
-    console.log("Cancelled FinalOrders with AWBs:", awbs);
-
     return response.data;
   } catch (error) {
     console.error("Cancel AWB error:", error.response?.data || error.message);
@@ -284,9 +280,6 @@ exports.cancelOrderByOrderId = async (orderIds = []) => {
       { shipRocketOrderId: { $in: idsArray } },
       { $set: { status: "cancelled" } }
     );
-
-    console.log("Cancelled FinalOrders with IDs:", idsArray);
-
     return response.data;
   } catch (error) {
     console.error("Cancel error:", error.response?.data || error.message);
@@ -341,7 +334,7 @@ exports.generateLabel = async (shipmentIds = []) => {
   return response.data;
 };
 
-exports.generateInvoice = async (orderIds = []) => {
+exports.generateTaxInvoice = async (orderIds = []) => {
   const token = await this.getActiveToken();
   const response = await axios.post(
     `${process.env.SHIPROCKET_API_URL}/orders/print/invoice`,

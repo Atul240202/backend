@@ -12,7 +12,6 @@ const crypto = require("crypto");
 //   params.append("client_version", process.env.PHONEPE_CLIENT_VERSION);
 //   params.append("grant_type", "client_credentials");
 
-//   console.log("phonepe auth url", process.env.PHONEPE_AUTH_URL);
 //   const response = await fetch(process.env.PHONEPE_AUTH_URL, {
 //     method: "POST",
 //     headers: {

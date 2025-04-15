@@ -107,7 +107,19 @@ router.post("/generate-label", protectAdmin, isAdmin, async (req, res) => {
 router.post("/generate-invoice", protectAdmin, isAdmin, async (req, res) => {
   try {
     const { ids } = req.body;
-    const result = await shipRocketController.generateInvoice(ids);
+    const result = await shipRocketController.generateTaxInvoice(ids);
+    res.json(result);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Invoice generation failed", error: err.message });
+  }
+});
+
+router.post("/user/generate-invoice", protect, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    const result = await shipRocketController.generateTaxInvoice(ids);
     res.json(result);
   } catch (err) {
     res

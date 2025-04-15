@@ -320,6 +320,15 @@ const finalOrderSchema = new mongoose.Schema(
         default: "",
       },
     },
+    refund_status: {
+      type: String,
+      enum: ["notrequired", "pending", "success", "failed"],
+      default: "notrequired",
+    },
+    refund_response: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
   },
   { timestamps: true }
 );
