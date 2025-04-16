@@ -49,6 +49,7 @@ const productSchema = new mongoose.Schema({
     width: { type: String },
     height: { type: String },
   },
+  shipping_amount: { type: Number, default: 200 },
   shipping_required: { type: Boolean },
   shipping_taxable: { type: Boolean },
   shipping_class: { type: String },
