@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const asyncHandler = require("express-async-handler");
+const FinalOrder = require("../models/FinalOrder");
 
 // @desc    Get user profile
 // @route   GET /api/users/profile
@@ -20,6 +21,37 @@ exports.getUserProfile = asyncHandler(async (req, res) => {
     console.error("Error fetching user profile:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
+});
+
+// @desc    Admin: Get all users with basic info
+// @route   GET /api/admin/users
+// @access  Admin
+exports.getAllUsersForAdmin = asyncHandler(async (req, res) => {
+  const users = await User.find().select("-password");
+
+  res.status(200).json({
+    success: true,
+    users,
+  });
+});
+
+// @desc    Admin: Search users by keyword (name or email)
+// @route   GET /api/users/search?keyword=abc
+// @access  Admin
+exports.searchUsersByKeyword = asyncHandler(async (req, res) => {
+  const keyword = req.query.keyword?.trim();
+  if (!keyword)
+    return res.status(400).json({ success: false, message: "Missing keyword" });
+
+  const query = {
+    $or: [
+      { name: { $regex: keyword, $options: "i" } },
+      { email: { $regex: keyword, $options: "i" } },
+    ],
+  };
+
+  const users = await User.find(query).select("-password");
+  res.status(200).json({ success: true, users });
 });
 
 // @desc    Update user profile
@@ -435,4 +467,56 @@ exports.setDefaultAddress = asyncHandler(async (req, res) => {
     console.error("Error setting default address:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
+});
+
+// @desc    Fetch user metrics
+// @route   PUT /api/users/admin/user-insights
+// @access  Private
+exports.getUserInsights = asyncHandler(async (req, res) => {
+  const now = new Date();
+  const past30Days = new Date(now.setDate(now.getDate() - 30));
+
+  const users = await User.find().select("-password");
+
+  const finalOrders = await FinalOrder.find({
+    createdAt: { $gte: past30Days },
+  });
+
+  const userOrderMap = {};
+  finalOrders.forEach((order) => {
+    const userId = order.user?.toString();
+    if (!userOrderMap[userId]) userOrderMap[userId] = 0;
+    userOrderMap[userId] += parseFloat(order.total || 0);
+  });
+
+  const enrichedUsers = users.map((user) => ({
+    ...user._doc,
+    totalSpent: userOrderMap[user._id.toString()] || 0,
+  }));
+
+  const topSpenders = enrichedUsers
+    .sort((a, b) => b.totalSpent - a.totalSpent)
+    .slice(0, 10);
+
+  const recentRegistrations = users
+    .filter((u) => new Date(u.createdAt) >= past30Days)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 10);
+
+  const activeUserCount = users.filter(
+    (u) => new Date(u.lastLogin) >= past30Days
+  ).length;
+  const recentUserCount = recentRegistrations.length;
+  const totalSales = finalOrders.reduce(
+    (sum, order) => sum + parseFloat(order.total || 0),
+    0
+  );
+
+  res.json({
+    topSpenders,
+    recentRegistrations,
+    activeUserCount,
+    recentUserCount,
+    totalSales: totalSales.toFixed(2),
+  });
 });

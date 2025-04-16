@@ -39,15 +39,14 @@ router.route("/categories").get(getProductCategories);
 // Get products by category
 router.route("/category/:slug").get(getProductsByCategory);
 
+// Search products by keyword
+router.route("/search").get(searchProductsByKeyword);
+router.route("/searchbybrand").get(searchBranchProducts);
 // Get single product by ID
 router
   .route("/:id")
   .get(getProductById)
   .put(protectAdmin, isAdmin, updateProduct)
   .delete(protectAdmin, isAdmin, deleteProduct);
-
-// Search products by keyword
-router.route("/search").get(searchProductsByKeyword);
-router.route("/searchbybrand").get(searchBranchProducts);
 
 module.exports = router;

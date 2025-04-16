@@ -6,6 +6,41 @@ const generateInvoiceAndUpload = require("../utils/generateInvoiceAndUpload");
 const { processPhonePePayment } = require("../utils/phonepeUtils");
 const Product = require("../models/Product");
 const crypto = require("crypto");
+const asyncHandler = require("express-async-handler");
+
+// @desc    Admin: Get user order stats
+// @route   GET /api/admin/user-orders/:userId
+// @access  Admin
+exports.getUserOrderStats = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const orders = await FinalOrder.find({ user: userId }).sort({
+    createdAt: -1,
+  });
+
+  const totalSpent = orders.reduce((sum, order) => {
+    const subtotal = parseFloat(order.sub_total || 0);
+    const shipping = parseFloat(order.shipping_charges || 0);
+    const discount = parseFloat(order.total_discount || 0);
+    return sum + (subtotal + shipping - discount);
+  }, 0);
+
+  const allProducts = orders.flatMap((o) => o.order_items);
+  const productNames = [...new Set(allProducts.map((p) => p.name))];
+
+  const orderIds = orders.map((o) => o.order_id || o._id);
+
+  res.status(200).json({
+    success: true,
+    stats: {
+      totalOrders: orders.length,
+      totalSpent: totalSpent.toFixed(2),
+      products: productNames,
+      orderIds,
+      orders,
+    },
+  });
+});
 
 // @desc    Get ShipRocket order details by ID
 // @route   GET /api/shiprocket/orders/:id

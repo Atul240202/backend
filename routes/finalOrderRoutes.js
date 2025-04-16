@@ -18,6 +18,7 @@ const {
   assignCourierToOrder,
   getInvoiceByOrderId,
   cancelFinalOrderWithRefund,
+  getUserOrderStats,
 } = require("../controllers/finalOrderController");
 
 // Create a new final order
@@ -54,6 +55,13 @@ router.post(
   protectAdmin,
   isAdmin,
   cancelFinalOrderWithRefund
+);
+
+router.get(
+  "/admin/user-orders/:userId",
+  protectAdmin,
+  isAdmin,
+  getUserOrderStats
 );
 
 router.post("/user/cancel-shipment", protect, cancelFinalOrderWithRefund);
