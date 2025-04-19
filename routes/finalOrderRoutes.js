@@ -20,6 +20,7 @@ const {
   cancelFinalOrderWithRefund,
   getUserOrderStats,
   getBatchUserOrderStats,
+  getAllPayments,
 } = require("../controllers/finalOrderController");
 
 // Create a new final order
@@ -36,6 +37,9 @@ router.get("/:id", protect, getFinalOrderById);
 
 // Update a final order status (admin only)
 router.put("/:id/status", protectAdmin, updateFinalOrderStatus);
+
+//Fetch all the payment data for admin
+router.get("/payments/all", protectAdmin, isAdmin, getAllPayments);
 
 // Delete a final order (admin only)
 router.delete("/:id", protectAdmin, deleteFinalOrder);

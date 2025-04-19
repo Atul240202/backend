@@ -890,6 +890,7 @@ exports.assignCourierToOrder = async (req, res) => {
 
     if (
       finalOrder.status === "cancelled" ||
+      finalOrder.status === "delivered" ||
       finalOrder.shipmentStatus === "shipped" ||
       finalOrder.shipmentStatus === "AWB_ASSIGNED"
     ) {
@@ -911,6 +912,7 @@ exports.assignCourierToOrder = async (req, res) => {
     const awbResponse = await shipRocketController.assignAWB(shipmentId);
 
     // Update finalOrder with courier details
+    finalOrder.status = "shipped";
     finalOrder.awbCode = awbResponse.awb_code;
     finalOrder.courierId = awbResponse.courier_id;
     finalOrder.trackingUrl = awbResponse.tracking_url;
@@ -1182,3 +1184,28 @@ exports.retryRefund = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// @desc    Get all payment records from Final Orders
+// @route   GET /api/final-orders/payments
+// @access  Admin
+exports.getAllPayments = asyncHandler(async (req, res) => {
+  const orders = await FinalOrder.find({})
+    .sort({ createdAt: -1 })
+    .populate("user", "name email") // optional: populate user info
+    .select(
+      "order_id payment_method sub_total shipping_charges transaction_charges status order_date phonepeTransactionId createdAt"
+    );
+
+  const payments = orders.map((order) => ({
+    order_id: order.order_id,
+    user: order.user,
+    payment_method: order.payment_method,
+    amount: Number(order.sub_total) + Number(order.shipping_charges),
+    transaction_charges: order.transaction_charges,
+    status: order.status,
+    payment_gateway_txn_id: order.phonepeTransactionId || "N/A",
+    date: order.createdAt,
+  }));
+
+  res.json({ success: true, data: payments });
+});

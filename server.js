@@ -13,6 +13,8 @@ const unprocessedOrderRoutes = require("./routes/unprocessedOrderRoutes");
 const finalOrderRoutes = require("./routes/finalOrderRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const phonepeRoutes = require("./routes/phonepeRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
+
 const {
   scheduleTokenRefresh,
   // scheduleFailedIntegrationCheck,
@@ -68,6 +70,7 @@ app.use("/api/admin/auth", require("./routes/adminAuthRoutes"));
 app.use("/api/payment/phonepe", phonepeRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api", imageUploadRoute);
+app.use("/api/dashboard", dashboardRoutes);
 // Base route
 app.get("/", (req, res) => {
   res.send("API is running...");
