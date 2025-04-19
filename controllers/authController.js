@@ -1,10 +1,10 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
-const User = require('../models/User');
-const PreRegistration = require('../models/PreRegistration');
-const sendEmail = require('../utils/sendEmail');
-const PasswordReset = require('../models/PasswordReset');
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+const User = require("../models/User");
+const PreRegistration = require("../models/PreRegistration");
+const sendEmail = require("../utils/sendEmail");
+const PasswordReset = require("../models/PasswordReset");
 
 // Generate OTP
 const generateOTP = () => {
@@ -13,15 +13,17 @@ const generateOTP = () => {
 
 // Register a new user
 exports.register = async (req, res) => {
+  console.log("Outside register try block");
   try {
     const { fullName, email, phone, password } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
+    console.log("existing user found?", existingUser);
     if (existingUser) {
       return res
         .status(400)
-        .json({ message: 'User already exists with this email' });
+        .json({ message: "User already exists with this email" });
     }
 
     // Check if phone is already in use
@@ -29,12 +31,13 @@ exports.register = async (req, res) => {
     if (existingPhone) {
       return res
         .status(400)
-        .json({ message: 'User already exists with this phone number' });
+        .json({ message: "User already exists with this phone number" });
     }
 
     // Generate OTP
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    console.log("User otp?", otp);
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
@@ -49,6 +52,7 @@ exports.register = async (req, res) => {
       otp,
       otpExpiry,
     });
+    console.log("Preregistration record", preRegistration);
 
     await preRegistration.save();
 
@@ -56,8 +60,9 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { id: preRegistration._id },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: "1h" }
     );
+    console.log("Preregistration token", token);
 
     // Send OTP email
     const message = `
@@ -69,19 +74,21 @@ exports.register = async (req, res) => {
 
     await sendEmail({
       email,
-      subject: 'Industrywaala - Email Verification OTP',
+      subject: "Industrywaala - Email Verification OTP",
       message,
     });
+    console.log("otp mail sent");
 
     res.status(201).json({
       success: true,
       message:
-        'Registration initiated. Please verify your email with the OTP sent.',
+        "Registration initiated. Please verify your email with the OTP sent.",
       token,
     });
+    console.log("otp mail sent");
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Registration error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -92,7 +99,7 @@ exports.verifyOTP = async (req, res) => {
 
     // Get user ID from token
     const decoded = jwt.verify(
-      req.headers.authorization.split(' ')[1],
+      req.headers.authorization.split(" ")[1],
       process.env.JWT_SECRET
     );
 
@@ -102,17 +109,17 @@ exports.verifyOTP = async (req, res) => {
     if (!preRegistration) {
       return res
         .status(400)
-        .json({ message: 'Invalid or expired registration session' });
+        .json({ message: "Invalid or expired registration session" });
     }
 
     // Check if OTP is expired
     if (preRegistration.otpExpiry < Date.now()) {
-      return res.status(400).json({ message: 'OTP has expired' });
+      return res.status(400).json({ message: "OTP has expired" });
     }
 
     // Verify OTP
     if (preRegistration.otp !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
+      return res.status(400).json({ message: "Invalid OTP" });
     }
 
     // Create new user
@@ -131,11 +138,11 @@ exports.verifyOTP = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Account verified successfully. You can now log in.',
+      message: "Account verified successfully. You can now log in.",
     });
   } catch (error) {
-    console.error('OTP verification error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("OTP verification error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -146,7 +153,7 @@ exports.resendOTP = async (req, res) => {
 
     // Get user ID from token
     const decoded = jwt.verify(
-      req.headers.authorization.split(' ')[1],
+      req.headers.authorization.split(" ")[1],
       process.env.JWT_SECRET
     );
 
@@ -156,7 +163,7 @@ exports.resendOTP = async (req, res) => {
     if (!preRegistration) {
       return res
         .status(400)
-        .json({ message: 'Invalid or expired registration session' });
+        .json({ message: "Invalid or expired registration session" });
     }
 
     // Generate new OTP
@@ -178,17 +185,17 @@ exports.resendOTP = async (req, res) => {
 
     await sendEmail({
       email: preRegistration.email,
-      subject: 'Industrywaala - Email Verification OTP',
+      subject: "Industrywaala - Email Verification OTP",
       message,
     });
 
     res.status(200).json({
       success: true,
-      message: 'OTP resent successfully',
+      message: "OTP resent successfully",
     });
   } catch (error) {
-    console.error('Resend OTP error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Resend OTP error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -200,21 +207,21 @@ exports.login = async (req, res) => {
     // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // Check if user is verified
     if (!user.isVerified) {
       return res
         .status(401)
-        .json({ message: 'Please verify your email before logging in' });
+        .json({ message: "Please verify your email before logging in" });
     }
 
     // Check password
     if (!user.googleSignIn) {
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
-        return res.status(401).json({ message: 'Invalid credentials' });
+        return res.status(401).json({ message: "Invalid credentials" });
       }
     }
 
@@ -222,7 +229,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: "30d" }
     );
 
     res.status(200).json({
@@ -236,8 +243,8 @@ exports.login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -249,7 +256,7 @@ exports.googleAuth = async (req, res) => {
     // Verify the Google ID token (in a production app, you would verify this with Google's API)
     // For this example, we'll assume the token is valid and contains user info
     const { email, firstName, lastName, googleId, fullName } = req.body;
-
+    console.log("User data", email, firstName, lastName, googleId, fullName);
     // Check if user already exists
     let user = await User.findOne({ email });
 
@@ -267,7 +274,7 @@ exports.googleAuth = async (req, res) => {
         return res.status(202).json({
           success: false,
           needsPhone: true,
-          message: 'Please provide a phone number to complete registration',
+          message: "Please provide a phone number to complete registration",
           tempData: { email, firstName, lastName, googleId, fullName },
         });
       }
@@ -277,7 +284,7 @@ exports.googleAuth = async (req, res) => {
       if (existingPhone) {
         return res
           .status(400)
-          .json({ message: 'User already exists with this phone number' });
+          .json({ message: "User already exists with this phone number" });
       }
 
       // Create new user
@@ -299,7 +306,7 @@ exports.googleAuth = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: "30d" }
     );
 
     res.status(200).json({
@@ -313,8 +320,8 @@ exports.googleAuth = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Google auth error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Google auth error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -325,13 +332,13 @@ exports.forgotPassword = async (req, res) => {
 
     // Check if user exists
     const user = await User.findOne({
-      email: { $regex: new RegExp('^' + email + '$', 'i') },
+      email: { $regex: new RegExp("^" + email + "$", "i") },
     });
 
     if (!user) {
       return res
         .status(404)
-        .json({ message: 'User not found with this email' });
+        .json({ message: "User not found with this email" });
     }
 
     // Generate OTP
@@ -358,7 +365,7 @@ exports.forgotPassword = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
+      expiresIn: "1h",
     });
 
     // Send OTP email
@@ -372,18 +379,18 @@ exports.forgotPassword = async (req, res) => {
 
     await sendEmail({
       email,
-      subject: 'Industrywaala - Password Reset OTP',
+      subject: "Industrywaala - Password Reset OTP",
       message,
     });
 
     res.status(200).json({
       success: true,
-      message: 'Password reset OTP sent to your email',
+      message: "Password reset OTP sent to your email",
       token,
     });
   } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -394,7 +401,7 @@ exports.verifyResetOTP = async (req, res) => {
 
     // Get email from token
     const decoded = jwt.verify(
-      req.headers.authorization.split(' ')[1],
+      req.headers.authorization.split(" ")[1],
       process.env.JWT_SECRET
     );
     const email = decoded.email;
@@ -405,32 +412,32 @@ exports.verifyResetOTP = async (req, res) => {
     if (!passwordReset) {
       return res
         .status(400)
-        .json({ message: 'Invalid or expired password reset session' });
+        .json({ message: "Invalid or expired password reset session" });
     }
 
     // Check if OTP is expired
     if (passwordReset.otpExpiry < Date.now()) {
-      return res.status(400).json({ message: 'OTP has expired' });
+      return res.status(400).json({ message: "OTP has expired" });
     }
 
     // Verify OTP
     if (passwordReset.otp !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
+      return res.status(400).json({ message: "Invalid OTP" });
     }
 
     // Generate a new token for password reset
     const resetToken = jwt.sign({ email }, process.env.JWT_SECRET, {
-      expiresIn: '15m',
+      expiresIn: "15m",
     });
 
     res.status(200).json({
       success: true,
-      message: 'OTP verified successfully. You can now reset your password.',
+      message: "OTP verified successfully. You can now reset your password.",
       token: resetToken,
     });
   } catch (error) {
-    console.error('Reset OTP verification error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Reset OTP verification error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -439,7 +446,7 @@ exports.resendResetOTP = async (req, res) => {
   try {
     // Get email from token
     const decoded = jwt.verify(
-      req.headers.authorization.split(' ')[1],
+      req.headers.authorization.split(" ")[1],
       process.env.JWT_SECRET
     );
     const email = decoded.email;
@@ -450,7 +457,7 @@ exports.resendResetOTP = async (req, res) => {
     if (!passwordReset) {
       return res
         .status(400)
-        .json({ message: 'Invalid or expired password reset session' });
+        .json({ message: "Invalid or expired password reset session" });
     }
 
     // Generate new OTP
@@ -473,17 +480,17 @@ exports.resendResetOTP = async (req, res) => {
 
     await sendEmail({
       email,
-      subject: 'Industrywaala - Password Reset OTP',
+      subject: "Industrywaala - Password Reset OTP",
       message,
     });
 
     res.status(200).json({
       success: true,
-      message: 'Password reset OTP resent successfully',
+      message: "Password reset OTP resent successfully",
     });
   } catch (error) {
-    console.error('Resend reset OTP error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Resend reset OTP error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -494,7 +501,7 @@ exports.resetPassword = async (req, res) => {
 
     // Get email from token
     const decoded = jwt.verify(
-      req.headers.authorization.split(' ')[1],
+      req.headers.authorization.split(" ")[1],
       process.env.JWT_SECRET
     );
     const email = decoded.email;
@@ -503,7 +510,7 @@ exports.resetPassword = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Hash new password
@@ -518,10 +525,10 @@ exports.resetPassword = async (req, res) => {
     res.status(200).json({
       success: true,
       message:
-        'Password reset successful. You can now log in with your new password.',
+        "Password reset successful. You can now log in with your new password.",
     });
   } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Reset password error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

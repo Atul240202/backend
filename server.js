@@ -36,15 +36,17 @@ app.use(cookieParser());
 //   })
 // );
 app.use(express.json());
-// Configure CORS with specific options
 app.use(
   cors({
     origin: [
-      "http://localhost:5173", // Development
-      "https://industrywaala.com", // Production
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "https://industrywaala.com",
+      "https://www.industrywaala.com",
+      "https://industrywaala.vercel.app",
       "https://ecommerce-frontend-lac-beta.vercel.app",
-      "https://accounts.google.com", // Allow Google's authentication servers
-      "http://localhost:3000", //Admin panel
+      "https://accounts.google.com",
+      "https://ecom-admin-panel-one.vercel.app",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

@@ -65,6 +65,8 @@ exports.createOrder = async (orderData) => {
   try {
     // Get authentication token
     const token = await this.getActiveToken();
+    console.log("shiprocket token", token);
+    console.log("shiprocket orderData", orderData);
     // Make API request to ShipRocket
     const response = await fetch(
       "https://apiv2.shiprocket.in/v1/external/orders/create/adhoc",
@@ -77,6 +79,7 @@ exports.createOrder = async (orderData) => {
         body: JSON.stringify(orderData),
       }
     );
+    console.log("shiprocket token response", response);
 
     // Parse response
     const data = await response.json();
