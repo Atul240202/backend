@@ -42,6 +42,70 @@ exports.getUserOrderStats = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Admin: Batch api for getting user order stats
+// @route   GET /api/admin/batch-user-orders
+// @access  Admin
+exports.getBatchUserOrderStats = asyncHandler(async (req, res) => {
+  const { userIds } = req.body; // Expecting: [id1, id2, ...]
+
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({ success: false, message: "Invalid userIds" });
+  }
+
+  const orders = await FinalOrder.find({
+    user: { $in: userIds },
+  }).sort({ createdAt: -1 });
+
+  // Group orders by userId
+  const userStatsMap = {};
+
+  for (const order of orders) {
+    const userId = order.user.toString();
+    if (!userStatsMap[userId]) {
+      userStatsMap[userId] = {
+        totalSpent: 0,
+        orders: [],
+        productNames: new Set(),
+        orderIds: [],
+      };
+    }
+
+    const subtotal = parseFloat(order.sub_total || 0);
+    const shipping = parseFloat(order.shipping_charges || 0);
+    const discount = parseFloat(order.total_discount || 0);
+    const total = subtotal + shipping - discount;
+
+    userStatsMap[userId].totalSpent += total;
+    userStatsMap[userId].orders.push(order);
+    userStatsMap[userId].orderIds.push(order.order_id || order._id);
+
+    for (const item of order.order_items || []) {
+      userStatsMap[userId].productNames.add(item.name);
+    }
+  }
+
+  // Format response
+  const responseData = {};
+  for (const userId of userIds) {
+    const stats = userStatsMap[userId] || {
+      totalSpent: 0,
+      orders: [],
+      productNames: new Set(),
+      orderIds: [],
+    };
+
+    responseData[userId] = {
+      totalOrders: stats.orders.length,
+      totalSpent: stats.totalSpent.toFixed(2),
+      products: Array.from(stats.productNames),
+      orderIds: stats.orderIds,
+      orders: stats.orders,
+    };
+  }
+
+  res.status(200).json({ success: true, data: responseData });
+});
+
 // @desc    Get ShipRocket order details by ID
 // @route   GET /api/shiprocket/orders/:id
 // @access  Private

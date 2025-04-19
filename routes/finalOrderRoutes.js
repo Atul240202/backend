@@ -19,6 +19,7 @@ const {
   getInvoiceByOrderId,
   cancelFinalOrderWithRefund,
   getUserOrderStats,
+  getBatchUserOrderStats,
 } = require("../controllers/finalOrderController");
 
 // Create a new final order
@@ -62,6 +63,13 @@ router.get(
   protectAdmin,
   isAdmin,
   getUserOrderStats
+);
+
+router.post(
+  "/admin/batch-user-orders",
+  protectAdmin,
+  isAdmin,
+  getBatchUserOrderStats
 );
 
 router.post("/user/cancel-shipment", protect, cancelFinalOrderWithRefund);
