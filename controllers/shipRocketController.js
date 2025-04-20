@@ -365,6 +365,94 @@ exports.getShiprocketOrderDetails = async (orderId) => {
   return response.data;
 };
 
+exports.updateShiprocketOrder = async (req, res) => {
+  try {
+    const token = await module.exports.getActiveToken();
+
+    const response = await axios.post(
+      `${process.env.SHIPROCKET_API_URL}/orders/update/adhoc`,
+      req.body,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const result = response.data;
+    if (result.not_updated_fields) {
+      console.warn("Shiprocket skipped fields:", result.not_updated_fields);
+    }
+
+    // Sync to FinalOrder MongoDB
+    const shiprocketOrderId = result.order_id?.toString();
+
+    if (shiprocketOrderId) {
+      const updateData = {
+        order_date: req.body.order_date,
+        pickup_location: req.body.pickup_location,
+        channel_id: req.body.channel_id,
+        comment: req.body.comment,
+        billing_customer_name: req.body.billing_customer_name,
+        billing_last_name: req.body.billing_last_name,
+        billing_address: req.body.billing_address,
+        billing_address_2: req.body.billing_address_2,
+        billing_city: req.body.billing_city,
+        billing_pincode: req.body.billing_pincode,
+        billing_state: req.body.billing_state,
+        billing_country: req.body.billing_country,
+        billing_email: req.body.billing_email,
+        billing_phone: req.body.billing_phone,
+        shipping_is_billing: req.body.shipping_is_billing,
+        shipping_customer_name: req.body.shipping_customer_name,
+        shipping_last_name: req.body.shipping_last_name,
+        shipping_address: req.body.shipping_address,
+        shipping_address_2: req.body.shipping_address_2,
+        shipping_city: req.body.shipping_city,
+        shipping_pincode: req.body.shipping_pincode,
+        shipping_country: req.body.shipping_country,
+        shipping_state: req.body.shipping_state,
+        shipping_email: req.body.shipping_email,
+        shipping_phone: req.body.shipping_phone,
+        payment_method: req.body.payment_method,
+        shipping_charges: req.body.shipping_charges,
+        giftwrap_charges: req.body.giftwrap_charges,
+        transaction_charges: req.body.transaction_charges,
+        total_discount: req.body.total_discount,
+        sub_total: req.body.sub_total,
+        length: req.body.length,
+        breadth: req.body.breadth,
+        height: req.body.height,
+        weight: req.body.weight,
+        order_items: req.body.order_items,
+      };
+
+      await FinalOrder.findOneAndUpdate(
+        { shipRocketOrderId: shiprocketOrderId },
+        { $set: updateData },
+        { new: true }
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Shiprocket and local order updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error(
+      "Error updating Shiprocket order:",
+      error?.response?.data || error.message
+    );
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update Shiprocket order",
+      error: error?.response?.data || error.message,
+    });
+  }
+};
+
 exports.createReturnOrder = async (returnData) => {
   const token = await this.getActiveToken();
   const response = await axios.post(

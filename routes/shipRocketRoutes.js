@@ -176,6 +176,16 @@ router.post("/user/create-return", protect, async (req, res) => {
   }
 });
 
+// POST /api/shiprocket/update-order
+router.post(
+  "/update-order",
+  protectAdmin,
+  isAdmin,
+  shipRocketController.updateShiprocketOrder
+);
+
+module.exports = router;
+
 // Route to get ShipRocket order details
 // router.get("/orders/:id", protect, shipRocketController.getShipRocketOrder);
 
