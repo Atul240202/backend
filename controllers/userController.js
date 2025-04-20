@@ -493,9 +493,7 @@ exports.setDefaultAddress = asyncHandler(async (req, res) => {
 exports.getUserInsights = asyncHandler(async (req, res) => {
   const now = new Date();
   const past30Days = new Date(now.setDate(now.getDate() - 30));
-  console.log("past30Days", past30Days);
   const users = await User.find().select("-password");
-
   const finalOrders = await FinalOrder.find({
     createdAt: { $gte: past30Days },
   });
@@ -512,13 +510,10 @@ exports.getUserInsights = asyncHandler(async (req, res) => {
     totalSpent: userOrderMap[user._id.toString()] || 0,
   }));
 
-  console.log("enriched user", enrichedUsers);
-
   const topSpenders = enrichedUsers
     .sort((a, b) => b.totalSpent - a.totalSpent)
     .slice(0, 10);
 
-  console.log("topSpenders", topSpenders);
   const recentRegistrations = users
     .filter((u) => new Date(u.createdAt) >= past30Days)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -528,15 +523,12 @@ exports.getUserInsights = asyncHandler(async (req, res) => {
     (u) => new Date(u.updatedAt) >= past30Days
   ).length;
 
-  console.log("activeUserCount", activeUserCount);
   const recentUserCount = recentRegistrations.length;
-  console.log("recentUserCount", recentUserCount);
 
   const totalSales = finalOrders.reduce(
     (sum, order) => sum + parseFloat(order.sub_total || 0),
     0
   );
-  console.log("totalSales", totalSales);
 
   res.json({
     topSpenders,

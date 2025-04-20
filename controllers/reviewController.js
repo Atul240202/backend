@@ -411,9 +411,6 @@ const updateReviewStatus = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const getReviewsByProductId = asyncHandler(async (req, res) => {
   const { orderId: productId } = req.params; // passed from frontend, actually productId
-
-  console.log("Filtering reviews for productId:", productId);
-
   const reviews = await Review.find({ productId: Number(productId) }).lean();
 
   const reviewsWithProduct = await Promise.all(

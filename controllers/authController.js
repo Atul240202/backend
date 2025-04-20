@@ -13,13 +13,11 @@ const generateOTP = () => {
 
 // Register a new user
 exports.register = async (req, res) => {
-  console.log("Outside register try block");
   try {
     const { fullName, email, phone, password } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
-    console.log("existing user found?", existingUser);
     if (existingUser) {
       return res
         .status(400)
@@ -37,7 +35,6 @@ exports.register = async (req, res) => {
     // Generate OTP
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    console.log("User otp?", otp);
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
@@ -52,7 +49,6 @@ exports.register = async (req, res) => {
       otp,
       otpExpiry,
     });
-    console.log("Preregistration record", preRegistration);
 
     await preRegistration.save();
 
@@ -62,7 +58,6 @@ exports.register = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
-    console.log("Preregistration token", token);
 
     // Send OTP email
     const message = `
@@ -77,7 +72,6 @@ exports.register = async (req, res) => {
       subject: "Industrywaala - Email Verification OTP",
       message,
     });
-    console.log("otp mail sent");
 
     res.status(201).json({
       success: true,
@@ -85,7 +79,6 @@ exports.register = async (req, res) => {
         "Registration initiated. Please verify your email with the OTP sent.",
       token,
     });
-    console.log("otp mail sent");
   } catch (error) {
     console.error("Registration error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -256,7 +249,6 @@ exports.googleAuth = async (req, res) => {
     // Verify the Google ID token (in a production app, you would verify this with Google's API)
     // For this example, we'll assume the token is valid and contains user info
     const { email, firstName, lastName, googleId, fullName } = req.body;
-    console.log("User data", email, firstName, lastName, googleId, fullName);
     // Check if user already exists
     let user = await User.findOne({ email });
 
