@@ -21,6 +21,7 @@ const {
 } = require("./utils/scheduler");
 const cookieParser = require("cookie-parser");
 const imageUploadRoute = require("./routes/imageUploadRoute");
+const contactRoutes = require("./routes/contactRoutes");
 
 dotenv.config();
 
@@ -71,6 +72,7 @@ app.use("/api/payment/phonepe", phonepeRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api", imageUploadRoute);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api", contactRoutes);
 // Base route
 app.get("/", (req, res) => {
   res.send("API is running...");

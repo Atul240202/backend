@@ -36,6 +36,10 @@ const productSchema = new mongoose.Schema({
   button_text: { type: String },
   tax_status: { type: String },
   tax_class: { type: String },
+  hsn: {
+    type: String,
+    default: "",
+  },
   manage_stock: { type: Boolean },
   stock_quantity: { type: Number, default: null },
   backorders: { type: String },
@@ -44,6 +48,7 @@ const productSchema = new mongoose.Schema({
   low_stock_amount: { type: Number, default: null },
   sold_individually: { type: Boolean },
   weight: { type: String },
+  discount: { type: String },
   dimensions: {
     length: { type: String },
     width: { type: String },
