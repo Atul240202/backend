@@ -54,6 +54,8 @@ const productSchema = new mongoose.Schema({
     width: { type: String },
     height: { type: String },
   },
+  youtube_vid: { type: String },
+  youtubeId: { type: String },
   shipping_amount: { type: Number, default: 200 },
   shipping_required: { type: Boolean },
   shipping_taxable: { type: Boolean },
