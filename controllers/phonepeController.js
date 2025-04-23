@@ -27,7 +27,7 @@ exports.verifyPhonePePayment = async (req, res) => {
     const saltIndex = process.env.PHONEPE_SALT_INDEX;
 
     // ✅ Generate X-VERIFY Header
-    const statusPath = `/v1/status/${merchantId}/${transactionId}`;
+    const statusPath = `/pg/v1/status/${merchantId}/${transactionId}`;
     const xVerify =
       crypto
         .createHash("sha256")
