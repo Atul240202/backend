@@ -1,31 +1,5 @@
 const crypto = require("crypto");
 
-// let cachedAccessToken = null;
-// let tokenExpiry = 0;
-
-// const getPhonePeAccessToken = async () => {
-//   if (cachedAccessToken && Date.now() < tokenExpiry) return cachedAccessToken;
-
-//   const params = new URLSearchParams();
-//   params.append("client_id", process.env.PHONEPE_CLIENT_ID);
-//   params.append("client_secret", process.env.PHONEPE_CLIENT_SECRET);
-//   params.append("client_version", process.env.PHONEPE_CLIENT_VERSION);
-//   params.append("grant_type", "client_credentials");
-
-//   const response = await fetch(process.env.PHONEPE_AUTH_URL, {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/x-www-form-urlencoded",
-//     },
-//     body: params.toString(),
-//   });
-
-//   const result = await response.json();
-//   cachedAccessToken = result.access_token;
-//   tokenExpiry = result.expires_at * 1000 - 60000; // refresh 1 min before expiry
-//   return cachedAccessToken;
-// };
-
 const generateXVerify = (base64Payload, saltKey) => {
   const string = base64Payload + "/pg/v1/pay" + saltKey;
   const sha256 = crypto.createHash("sha256").update(string).digest("hex");

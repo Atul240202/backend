@@ -226,14 +226,27 @@ exports.createFinalOrderFromTransaction = async (
   transactionId,
   result
 ) => {
+  console.log("🔁 createFinalOrderFromTransaction called");
+  console.log("📦 orderData:", JSON.stringify(orderData, null, 2));
+  console.log("🔑 transactionId:", transactionId);
+  console.log("📲 result from PhonePe:", JSON.stringify(result, null, 2));
+
   const finalOrder = await FinalOrder.findOne({
     phonepeTransactionId: transactionId,
   });
-  if (!finalOrder) throw new Error("Final order not found for transaction");
+  console.log("🔍 finalOrder found:", finalOrder);
+
+  if (!finalOrder) {
+    console.error("❌ Final order not found for transaction");
+    throw new Error("Final order not found for transaction");
+  }
+
   if (finalOrder.status === "payment confirmed") {
+    console.log("✅ Final order already confirmed");
     return finalOrder;
   }
 
+  console.log("🔄 Updating finalOrder status to 'payment confirmed'");
   finalOrder.status = "payment confirmed";
   finalOrder.phonepeApiResults = {
     success: result.success,
@@ -241,17 +254,26 @@ exports.createFinalOrderFromTransaction = async (
     transactionId: result.data.transactionId,
     merchantTransactionId: result.data.merchantTransactionId,
   };
+
   try {
+    console.log("📦 Calling handleShiprocketAndInvoice...");
     const invoiceUrl = await handleShiprocketAndInvoice(orderData, finalOrder);
+    console.log("🧾 Invoice URL:", invoiceUrl);
+
+    console.log("📈 Incrementing product sales...");
     await incrementProductSales(orderData.order_items);
+
+    console.log("📧 Sending order confirmation email...");
     await sendOrderConfirmationMail(orderData, finalOrder, invoiceUrl);
+
+    console.log("✅ Final order created successfully");
     return {
       success: true,
       message: "Order created successfully",
       orderId: finalOrder.order_id,
     };
   } catch (error) {
-    console.error("Error creating final order:", error);
+    console.error("❌ Error creating final order:", error);
     return {
       success: false,
       message: "Failed to create order",
@@ -262,18 +284,25 @@ exports.createFinalOrderFromTransaction = async (
 
 //For creating order (courier logic is currently not in use, for making it in use kindly make ASSIGN_COURIER flag true in env)
 exports.createFinalOrder = async (req, res) => {
+  console.log("🔁 createFinalOrder called");
+
   try {
     const orderData = req.body;
     const userId = req.user.id;
-
     const finalOrder = await createOrderRecord(orderData, userId);
 
     if (orderData.payment_method === "Prepaid") {
       const transactionId = finalOrder.phonepeTransactionId;
+      console.log(
+        "💳 Prepaid order detected. Initiating PhonePe with transactionId:",
+        transactionId
+      );
+
       const { redirectUrl } = await processPhonePePayment(
         finalOrder,
         transactionId
       );
+      console.log("🔗 redirectUrl from PhonePe:", redirectUrl);
 
       return res.status(202).json({
         success: true,
@@ -284,17 +313,24 @@ exports.createFinalOrder = async (req, res) => {
       });
     }
 
+    console.log("🚚 Handling Shiprocket & Invoice for COD order...");
     const invoiceUrl = await handleShiprocketAndInvoice(orderData, finalOrder);
+    console.log("🧾 Invoice URL generated:", invoiceUrl);
+
+    console.log("📈 Incrementing product sales...");
     await incrementProductSales(orderData.order_items);
+
+    console.log("📧 Sending order confirmation email...");
     await sendOrderConfirmationMail(orderData, finalOrder, invoiceUrl);
 
+    console.log("✅ Final COD order processed successfully");
     return res.status(201).json({
       success: true,
       data: finalOrder,
       message: "Order created successfully",
     });
   } catch (error) {
-    console.error("Error creating final order:", error);
+    console.error("❌ Error creating final order:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to create order",
@@ -511,65 +547,65 @@ async function sendOrderConfirmationMail(orderData, finalOrder, invoiceUrl) {
   });
 }
 
-exports.verifyPhonePePayment = async (req, res) => {
-  try {
-    const { transactionId } = req.params;
-    const finalOrder = await FinalOrder.findOne({
-      phonepeTransactionId: transactionId,
-    });
+// exports.verifyPhonePePayment = async (req, res) => {
+//   try {
+//     const { transactionId } = req.params;
+//     const finalOrder = await FinalOrder.findOne({
+//       phonepeTransactionId: transactionId,
+//     });
 
-    if (!finalOrder) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
-    }
+//     if (!finalOrder) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Order not found" });
+//     }
 
-    const accessToken =
-      await require("../utils/phonepeUtils").getPhonePeAccessToken();
+//     const accessToken =
+//       await require("../utils/phonepeUtils").getPhonePeAccessToken();
 
-    const response = await fetch(
-      `${process.env.PHONEPE_API_URL}/pg-sandbox/checkout/v1/status/${transactionId}?merchantId=${process.env.PHONEPE_MERCHANT_ID}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `O-Bearer ${accessToken}`,
-          accept: "application/json",
-        },
-      }
-    );
+//     const response = await fetch(
+//       `${process.env.PHONEPE_API_URL}/pg-sandbox/checkout/v1/status/${transactionId}?merchantId=${process.env.PHONEPE_MERCHANT_ID}`,
+//       {
+//         method: "GET",
+//         headers: {
+//           Authorization: `O-Bearer ${accessToken}`,
+//           accept: "application/json",
+//         },
+//       }
+//     );
 
-    const result = await response.json();
-    const status =
-      result?.success && result?.code === "PAYMENT_SUCCESS"
-        ? "COMPLETED"
-        : result?.code;
+//     const result = await response.json();
+//     const status =
+//       result?.success && result?.code === "PAYMENT_SUCCESS"
+//         ? "COMPLETED"
+//         : result?.code;
 
-    if (status === "COMPLETED") {
-      finalOrder.status = "payment confirmed";
-      await finalizeOrderSteps(finalOrder);
-      return res.status(200).json({
-        success: true,
-        status: "success",
-        orderId: finalOrder.order_id,
-      });
-    } else {
-      finalOrder.status = "cancelled";
-      await finalOrder.save();
-      return res.status(400).json({
-        success: false,
-        status: "failed",
-        message: result.message || "Payment failed",
-      });
-    }
-  } catch (err) {
-    console.error("PhonePe verification error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Error verifying payment",
-      error: err.message,
-    });
-  }
-};
+//     if (status === "COMPLETED") {
+//       finalOrder.status = "payment confirmed";
+//       await finalizeOrderSteps(finalOrder);
+//       return res.status(200).json({
+//         success: true,
+//         status: "success",
+//         orderId: finalOrder.order_id,
+//       });
+//     } else {
+//       finalOrder.status = "cancelled";
+//       await finalOrder.save();
+//       return res.status(400).json({
+//         success: false,
+//         status: "failed",
+//         message: result.message || "Payment failed",
+//       });
+//     }
+//   } catch (err) {
+//     console.error("PhonePe verification error:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: "Error verifying payment",
+//       error: err.message,
+//     });
+//   }
+// };
 
 //Order creation process done
 

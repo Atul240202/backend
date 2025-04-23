@@ -39,13 +39,23 @@ exports.verifyPhonePePayment = async (req, res) => {
     const status = result?.data?.state;
 
     if (status === "COMPLETED") {
-      finalOrder.status = "payment confirmed";
+      const orderData = {
+        ...finalOrder.toObject(),
+        user: finalOrder.user,
+        order_items: finalOrder.order_items,
+      };
+
       const finalResult = await createFinalOrderFromTransaction(
-        finalOrder,
+        orderData,
         finalOrder.phonepeTransactionId,
         result
       );
+
       if (finalResult.success) {
+        console.log(
+          "✅ PhonePe payment verified and order finalized:",
+          transactionId
+        );
         return res.status(200).json({
           success: true,
           status: "success",
