@@ -50,6 +50,7 @@ app.use(
       "https://ecommerce-frontend-lac-beta.vercel.app",
       "https://accounts.google.com",
       "https://ecom-admin-panel-one.vercel.app",
+      "https://ecom-backend-e5fz.onrender.com",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
