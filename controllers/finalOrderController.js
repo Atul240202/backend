@@ -1147,17 +1147,14 @@ async function processPhonePeRefund(transactionId) {
       .digest("hex");
     const xVerify = sha256 + "###" + process.env.PHONEPE_SALT_INDEX;
 
-    const response = await fetch(
-      `${process.env.PHONEPE_API_URL}/pg/v1/refund`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-VERIFY": xVerify,
-        },
-        body: JSON.stringify({ request: payloadBase64 }),
-      }
-    );
+    const response = await fetch(`${process.env.PHONEPE_API_URL}/v1/refund`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+      },
+      body: JSON.stringify({ request: payloadBase64 }),
+    });
     const result = await response.json();
 
     if (result.success && result.code === "REFUND_INITIATED") {
