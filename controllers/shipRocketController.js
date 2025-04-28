@@ -462,3 +462,54 @@ exports.createReturnOrder = async (returnData) => {
   );
   return response.data;
 };
+
+exports.checkDeliveryServiceability = async (req, res) => {
+  try {
+    const { deliveryPostcode } = req.body;
+
+    if (!deliveryPostcode) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Delivery pincode required" });
+    }
+
+    const pickupPostcode = process.env.SHIPROCKET_PICKUP_PINCODE;
+    const weight = 1;
+    const cod = false;
+
+    const serviceability = await exports.getAvailableCouriers(
+      pickupPostcode,
+      deliveryPostcode,
+      weight,
+      cod
+    );
+
+    if (
+      serviceability &&
+      serviceability.data &&
+      serviceability.data.available_courier_companies.length > 0
+    ) {
+      const bestCourier = serviceability.data.available_courier_companies[0];
+      return res.status(200).json({
+        success: true,
+        available: true,
+        estimated_delivery_days: bestCourier.estimated_delivery_days,
+        courier_name: bestCourier.courier_name,
+        city: serviceability.data.available_courier_companies[0].city, // <-- important
+        shipping_charges: bestCourier.freight_charge, // <-- important
+        pincode: deliveryPostcode,
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        available: false,
+        message: "No delivery service available to this pincode",
+      });
+    }
+  } catch (error) {
+    console.error("Error checking serviceability:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};

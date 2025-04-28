@@ -176,6 +176,11 @@ router.post("/user/create-return", protect, async (req, res) => {
   }
 });
 
+router.post(
+  "/check-delivery",
+  shipRocketController.checkDeliveryServiceability
+);
+
 // POST /api/shiprocket/update-order
 router.post(
   "/update-order",
