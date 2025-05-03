@@ -14,13 +14,14 @@ const finalOrderRoutes = require("./routes/finalOrderRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const phonepeRoutes = require("./routes/phonepeRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
-
+const blogRoutes = require("./routes/blogRoutes");
 const {
   scheduleTokenRefresh,
   // scheduleFailedIntegrationCheck,
 } = require("./utils/scheduler");
 const cookieParser = require("cookie-parser");
 const imageUploadRoute = require("./routes/imageUploadRoute");
+const blogImageUploadRoutes = require("./routes/blogImageUploadRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 
 dotenv.config();
@@ -74,6 +75,9 @@ app.use("/api", reviewRoutes);
 app.use("/api", imageUploadRoute);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", contactRoutes);
+app.use("/api/blogs", blogRoutes);
+app.use("/api", blogImageUploadRoutes);
+//blogImageUploadRoutes
 // Base route
 app.get("/", (req, res) => {
   res.send("API is running...");

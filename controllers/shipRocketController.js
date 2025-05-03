@@ -127,41 +127,6 @@ exports.assignAWB = async (shipment_id, courier_id = null, status = "") => {
   return data;
 };
 
-// Get available courier services
-exports.getAvailableCouriers = async (
-  pickupPostcode,
-  deliveryPostcode,
-  weight,
-  cod = false
-) => {
-  try {
-    // Get active token
-    const token = await this.getActiveToken();
-
-    // Make API request to get available couriers
-    const response = await axios.get(
-      `${process.env.SHIPROCKET_API_URL}/courier/serviceability`,
-      {
-        params: {
-          pickup_postcode: pickupPostcode,
-          delivery_postcode: deliveryPostcode,
-          weight,
-          cod: cod ? 1 : 0,
-        },
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching available couriers:", error);
-    throw new Error("Failed to fetch available couriers");
-  }
-};
-
 // Track shipment
 exports.trackShipment = async (orderId) => {
   try {
@@ -463,40 +428,98 @@ exports.createReturnOrder = async (returnData) => {
   return response.data;
 };
 
+// Get available courier services
+exports.getAvailableCouriers = async (
+  pickupPostcode,
+  deliveryPostcode,
+  weight,
+  cod = false,
+  length,
+  breadth,
+  height,
+  declared_value
+) => {
+  try {
+    const token = await this.getActiveToken();
+
+    const response = await axios.get(
+      `${process.env.SHIPROCKET_API_URL}/courier/serviceability`,
+      {
+        params: {
+          pickup_postcode: pickupPostcode,
+          delivery_postcode: deliveryPostcode,
+          weight,
+          cod: cod ? 1 : 0,
+          length,
+          breadth,
+          height,
+          declared_value,
+        },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching available couriers:", error.message);
+    throw new Error("Failed to fetch available couriers");
+  }
+};
+
 exports.checkDeliveryServiceability = async (req, res) => {
   try {
-    const { deliveryPostcode } = req.body;
+    const {
+      deliveryPostcode,
+      weight,
+      length,
+      breadth,
+      height,
+      declared_value,
+    } = req.body;
 
-    if (!deliveryPostcode) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Delivery pincode required" });
+    if (!deliveryPostcode || !length || !weight || !height) {
+      console.log(
+        "shiprocket data",
+        deliveryPostcode,
+        "||",
+        length,
+        "||",
+        weight,
+        "||",
+        height
+      );
+      return res.status(400).json({
+        success: false,
+        message: "Delivery pincode and product dimensions are required",
+      });
     }
 
     const pickupPostcode = process.env.SHIPROCKET_PICKUP_PINCODE;
-    const weight = 1;
     const cod = false;
 
     const serviceability = await exports.getAvailableCouriers(
       pickupPostcode,
       deliveryPostcode,
       weight,
-      cod
+      cod,
+      length,
+      breadth,
+      height,
+      declared_value
     );
 
-    if (
-      serviceability &&
-      serviceability.data &&
-      serviceability.data.available_courier_companies.length > 0
-    ) {
+    if (serviceability?.data?.available_courier_companies?.length > 0) {
       const bestCourier = serviceability.data.available_courier_companies[0];
       return res.status(200).json({
         success: true,
         available: true,
         estimated_delivery_days: bestCourier.estimated_delivery_days,
         courier_name: bestCourier.courier_name,
-        city: serviceability.data.available_courier_companies[0].city, // <-- important
-        shipping_charges: bestCourier.freight_charge, // <-- important
+        city: bestCourier.city,
+        shipping_charges: bestCourier.freight_charge,
         pincode: deliveryPostcode,
       });
     } else {
@@ -508,8 +531,9 @@ exports.checkDeliveryServiceability = async (req, res) => {
     }
   } catch (error) {
     console.error("Error checking serviceability:", error.message);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
