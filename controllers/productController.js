@@ -136,8 +136,8 @@ const searchProductsByKeyword = asyncHandler(async (req, res) => {
   const searchQuery = {
     $or: [
       { title: { $regex: keyword, $options: "i" } },
-      { description: { $regex: keyword, $options: "i" } },
-      { "brand.name": { $regex: keyword, $options: "i" } },
+      // { description: { $regex: keyword, $options: "i" } },
+      // { "brand.name": { $regex: keyword, $options: "i" } },
     ],
   };
 
@@ -147,21 +147,17 @@ const searchProductsByKeyword = asyncHandler(async (req, res) => {
   res.json({ products, total: count });
 });
 
-// @desc    Search products by keyword
-// @route   GET /api/products/search
+// @desc    Search products by brand
+// @route   GET /api/products/searchbybrand
 // @access  Public
 const searchBranchProducts = asyncHandler(async (req, res) => {
+  console.log("search by brand called");
   const pageSize = Number(req.query.limit) || 50;
   const page = Number(req.query.page) || 1;
   const keyword = req.query.keyword || "";
 
   const searchQuery = {
-    $or: [
-      { name: { $regex: keyword, $options: "i" } },
-      { description: { $regex: keyword, $options: "i" } },
-      { "categories.name": { $regex: keyword, $options: "i" } },
-      { "tags.name": { $regex: keyword, $options: "i" } },
-    ],
+    brand: { $regex: keyword, $options: "i" },
   };
 
   const count = await Product.countDocuments(searchQuery);
