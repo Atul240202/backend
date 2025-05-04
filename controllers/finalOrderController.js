@@ -289,6 +289,12 @@ exports.createFinalOrder = async (req, res) => {
   try {
     const orderData = req.body;
     const userId = req.user.id;
+    console.log("🔎 Final order dimensions before saving:", {
+      length: orderData.length,
+      breadth: orderData.breadth,
+      height: orderData.height,
+      weight: orderData.weight,
+    });
     const finalOrder = await createOrderRecord(orderData, userId);
 
     if (orderData.payment_method === "Prepaid") {
@@ -377,7 +383,15 @@ async function createOrderRecord(orderData, userId) {
 
 async function handleShiprocketAndInvoice(orderData, finalOrder) {
   try {
+    console.log("📦 Shiprocket package data:", {
+      length: orderData.length,
+      breadth: orderData.breadth,
+      height: orderData.height,
+      weight: orderData.weight,
+    });
     const shipRocketOrderData = buildShipRocketOrderData(orderData);
+    console.log("🛫 Final payload to ShipRocket:", shipRocketOrderData);
+
     const shipRocketResponse = await shipRocketController.createOrder(
       shipRocketOrderData
     );
@@ -739,7 +753,7 @@ exports.deleteFinalOrder = async (req, res) => {
       });
     }
 
-    await finalOrder.remove();
+    await FinalOrder.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       success: true,
