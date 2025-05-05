@@ -151,7 +151,6 @@ const searchProductsByKeyword = asyncHandler(async (req, res) => {
 // @route   GET /api/products/searchbybrand
 // @access  Public
 const searchBranchProducts = asyncHandler(async (req, res) => {
-  console.log("search by brand called");
   const pageSize = Number(req.query.limit) || 50;
   const page = Number(req.query.page) || 1;
   const keyword = req.query.keyword || "";
