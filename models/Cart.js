@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const cartItemSchema = new mongoose.Schema({
   productId: {
@@ -19,6 +19,23 @@ const cartItemSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  sku: {
+    type: String,
+    default: "",
+  },
+  shipping_amount: {
+    type: Number,
+    default: 200,
+  },
+  weight: {
+    type: String,
+    default: "",
+  },
+  dimensions: {
+    length: { type: String, default: "" },
+    width: { type: String, default: "" },
+    height: { type: String, default: "" },
+  },
   image: {
     type: String,
     required: true,
@@ -28,7 +45,7 @@ const cartItemSchema = new mongoose.Schema({
 const cartSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: "User",
     required: true,
   },
   items: [cartItemSchema],
@@ -43,11 +60,11 @@ const cartSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-cartSchema.pre('save', function (next) {
+cartSchema.pre("save", function (next) {
   this.updatedAt = Date.now();
   next();
 });
 
-const Cart = mongoose.model('Cart', cartSchema);
+const Cart = mongoose.model("Cart", cartSchema);
 
 module.exports = Cart;

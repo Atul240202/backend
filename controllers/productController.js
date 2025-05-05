@@ -74,38 +74,38 @@ const deleteProduct = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Fetch all products
+// @desc    Fetch all products with search and pagination
 // @route   GET /api/products
 // @access  Public
 const getProducts = asyncHandler(async (req, res) => {
-  const pageSize = 50;
-  const page = Number(req.query.pageNumber) || 1;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const keyword = req.query.keyword || "";
 
-  const keyword = req.query.keyword
+  const searchFilter = keyword
     ? {
         $or: [
-          { name: { $regex: req.query.keyword, $options: "i" } },
-          { description: { $regex: req.query.keyword, $options: "i" } },
+          { name: { $regex: keyword, $options: "i" } },
+          { description: { $regex: keyword, $options: "i" } },
         ],
       }
     : {};
 
-  // 👇 Add status !== 'draft'
   const filter = {
-    ...keyword,
+    ...searchFilter,
     status: { $ne: "draft" },
   };
 
-  const count = await Product.countDocuments(filter);
+  const total = await Product.countDocuments(filter);
   const products = await Product.find(filter)
-    .limit(pageSize)
-    .skip(pageSize * (page - 1));
+    .limit(limit)
+    .skip(limit * (page - 1));
 
   res.json({
     products,
     page,
-    pages: Math.ceil(count / pageSize),
-    total: count,
+    pages: Math.ceil(total / limit), // Renamed here
+    total,
   });
 });
 

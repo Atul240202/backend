@@ -1,6 +1,6 @@
-const Cart = require('../models/Cart');
-const Product = require('../models/Product');
-const asyncHandler = require('express-async-handler');
+const Cart = require("../models/Cart");
+const Product = require("../models/Product");
+const asyncHandler = require("express-async-handler");
 
 // @desc    Add item to cart
 // @route   POST /api/cart
@@ -14,7 +14,7 @@ exports.addToCart = asyncHandler(async (req, res) => {
     const product = await Product.findOne({ id: productId });
 
     if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ message: "Product not found" });
     }
 
     // Check if user already has a cart
@@ -33,6 +33,14 @@ exports.addToCart = asyncHandler(async (req, res) => {
       (item) => item.productId === productId
     );
 
+    let basePrice =
+      product.sale_price || product.regular_price || product.price;
+    basePrice = parseFloat(basePrice);
+
+    if (isNaN(basePrice)) {
+      return res.status(400).json({ message: "Invalid product price" });
+    }
+
     if (itemIndex > -1) {
       // Product exists in cart, update the quantity
       cart.items[itemIndex].quantity += quantity;
@@ -42,11 +50,19 @@ exports.addToCart = asyncHandler(async (req, res) => {
         productId,
         quantity,
         name: product.name,
-        price: Number.parseFloat(product.price),
+        price: basePrice,
+        sku: product.sku || "",
+        shipping_amount: product.shipping_amount || 200,
+        weight: product.weight || "",
+        dimensions: {
+          length: product.dimensions?.length || "",
+          width: product.dimensions?.width || "",
+          height: product.dimensions?.height || "",
+        },
         image:
           product.images && product.images.length > 0
             ? product.images[0].src
-            : '',
+            : "",
       });
     }
 
@@ -57,8 +73,8 @@ exports.addToCart = asyncHandler(async (req, res) => {
       cart,
     });
   } catch (error) {
-    console.error('Add to cart error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Add to cart error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -83,8 +99,8 @@ exports.getCart = asyncHandler(async (req, res) => {
       cart,
     });
   } catch (error) {
-    console.error('Get cart error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Get cart error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -100,7 +116,7 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
     const cart = await Cart.findOne({ userId });
 
     if (!cart) {
-      return res.status(404).json({ message: 'Cart not found' });
+      return res.status(404).json({ message: "Cart not found" });
     }
 
     const itemIndex = cart.items.findIndex(
@@ -108,7 +124,7 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
     );
 
     if (itemIndex === -1) {
-      return res.status(404).json({ message: 'Item not found in cart' });
+      return res.status(404).json({ message: "Item not found in cart" });
     }
 
     if (quantity <= 0) {
@@ -126,8 +142,8 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
       cart,
     });
   } catch (error) {
-    console.error('Update cart item error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Update cart item error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -142,7 +158,7 @@ exports.removeFromCart = asyncHandler(async (req, res) => {
     const cart = await Cart.findOne({ userId });
 
     if (!cart) {
-      return res.status(404).json({ message: 'Cart not found' });
+      return res.status(404).json({ message: "Cart not found" });
     }
 
     const itemIndex = cart.items.findIndex(
@@ -150,7 +166,7 @@ exports.removeFromCart = asyncHandler(async (req, res) => {
     );
 
     if (itemIndex === -1) {
-      return res.status(404).json({ message: 'Item not found in cart' });
+      return res.status(404).json({ message: "Item not found in cart" });
     }
 
     // Remove item from cart
@@ -162,8 +178,8 @@ exports.removeFromCart = asyncHandler(async (req, res) => {
       cart,
     });
   } catch (error) {
-    console.error('Remove from cart error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Remove from cart error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -177,7 +193,7 @@ exports.clearCart = asyncHandler(async (req, res) => {
     const cart = await Cart.findOne({ userId });
 
     if (!cart) {
-      return res.status(404).json({ message: 'Cart not found' });
+      return res.status(404).json({ message: "Cart not found" });
     }
 
     cart.items = [];
@@ -185,10 +201,10 @@ exports.clearCart = asyncHandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Cart cleared successfully',
+      message: "Cart cleared successfully",
     });
   } catch (error) {
-    console.error('Clear cart error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Clear cart error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });

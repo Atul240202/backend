@@ -433,7 +433,7 @@ exports.getAvailableCouriers = async (
   pickupPostcode,
   deliveryPostcode,
   weight,
-  cod = false,
+  cod = true,
   length,
   breadth,
   height,
@@ -498,7 +498,7 @@ exports.checkDeliveryServiceability = async (req, res) => {
     }
 
     const pickupPostcode = process.env.SHIPROCKET_PICKUP_PINCODE;
-    const cod = false;
+    const cod = true;
 
     const serviceability = await exports.getAvailableCouriers(
       pickupPostcode,
@@ -519,7 +519,7 @@ exports.checkDeliveryServiceability = async (req, res) => {
         estimated_delivery_days: bestCourier.estimated_delivery_days,
         courier_name: bestCourier.courier_name,
         city: bestCourier.city,
-        shipping_charges: bestCourier.freight_charge,
+        shipping_charges: bestCourier.freight_charge + bestCourier.cod_charges,
         pincode: deliveryPostcode,
       });
     } else {
