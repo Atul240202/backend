@@ -14,6 +14,7 @@ const {
   updateProduct,
   deleteProduct,
   getDraftProducts,
+  getProductBySlug,
 } = require("../controllers/productController");
 
 const { protectAdmin, isAdmin } = require("../middleware/authMiddleware");
@@ -48,5 +49,7 @@ router
   .get(getProductById)
   .put(protectAdmin, isAdmin, updateProduct)
   .delete(protectAdmin, isAdmin, deleteProduct);
+
+router.route("/slug/:slug").get(getProductBySlug);
 
 module.exports = router;

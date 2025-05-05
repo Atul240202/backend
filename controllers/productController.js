@@ -193,6 +193,22 @@ const getProductById = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Fetch single product by slug
+// @route   GET /api/products/slug/:slug
+// @access  Public
+const getProductBySlug = asyncHandler(async (req, res) => {
+  const slug = req.params.slug;
+
+  const product = await Product.findOne({ slug });
+
+  if (product) {
+    res.json(product);
+  } else {
+    res.status(404);
+    throw new Error("Product not found");
+  }
+});
+
 // @desc    Fetch products by category
 // @route   GET /api/products/category/:slug
 // @access  Public
@@ -293,4 +309,5 @@ module.exports = {
   updateProduct,
   createProduct,
   getDraftProducts,
+  getProductBySlug,
 };
