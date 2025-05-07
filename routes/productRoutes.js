@@ -15,6 +15,7 @@ const {
   deleteProduct,
   getDraftProducts,
   getProductBySlug,
+  getBestSellerProductsByRange,
 } = require("../controllers/productController");
 
 const { protectAdmin, isAdmin } = require("../middleware/authMiddleware");
@@ -30,6 +31,11 @@ router.route("/featured").get(getFeaturedProducts);
 
 // Get best selling products
 router.route("/bestsellers").get(getBestSellerProducts);
+
+//GET /api/products/bestsellers-range?range=week
+//GET /api/products/bestsellers-range?range=month
+//GET /api/products/bestsellers-range?range=lifetime
+router.route("/bestsellers-range").get(getBestSellerProductsByRange);
 
 // Get variable products
 router.route("/type/variable").get(getVariableProducts);

@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/Product");
+const BestSellerCache = require("../models/BestSellerCache");
 
 // @desc    Add new product
 // @route   POST /api/products
@@ -265,6 +266,33 @@ const getBestSellerProducts = asyncHandler(async (req, res) => {
   res.json(products);
 });
 
+// @desc    Fetch best selling products for a given range
+// @route   GET /api/products/bestsellers-range?range=week|month|lifetime
+// @access  Public
+const getBestSellerProductsByRange = asyncHandler(async (req, res) => {
+  const allowedRanges = ["week", "month", "lifetime"];
+  const range = allowedRanges.includes(req.query.range)
+    ? req.query.range
+    : "lifetime";
+
+  const limit = Number(req.query.limit) || 20;
+  const cache = await BestSellerCache.findOne({ range });
+
+  if (!cache) {
+    return res
+      .status(404)
+      .json({ message: `No best seller data found for ${range}` });
+  }
+
+  const limitedProducts = cache.products.slice(0, limit);
+
+  res.json({
+    range,
+    generatedAt: cache.generatedAt,
+    products: limitedProducts,
+  });
+});
+
 // @desc    Fetch products whose type is variable
 // @route   GET /api/products/variable
 // @access  Public
@@ -308,4 +336,5 @@ module.exports = {
   createProduct,
   getDraftProducts,
   getProductBySlug,
+  getBestSellerProductsByRange,
 };
