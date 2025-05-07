@@ -23,6 +23,8 @@ const cookieParser = require("cookie-parser");
 const imageUploadRoute = require("./routes/imageUploadRoute");
 const blogImageUploadRoutes = require("./routes/blogImageUploadRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const cron = require("node-cron");
+const runBestSellerJob = require("./scripts/updateBestSellers");
 
 dotenv.config();
 
@@ -59,6 +61,12 @@ app.use(
   })
 );
 
+if (process.env.NODE_ENV === "production") {
+  cron.schedule("0 12 * * *", async () => {
+    console.log("⏰ Running 2 AM best-seller update...");
+    await runBestSellerJob();
+  });
+}
 // Routes
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
