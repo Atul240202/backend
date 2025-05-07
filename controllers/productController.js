@@ -127,7 +127,6 @@ const getDraftProducts = asyncHandler(async (req, res) => {
 // @access  Public
 const searchProductsByKeyword = asyncHandler(async (req, res) => {
   const keyword = req.query.keyword || "";
-  const limit = Number(req.query.limit) || 10;
 
   if (keyword.trim() === "") {
     return res.json({ products: [], total: 0 });
@@ -135,14 +134,14 @@ const searchProductsByKeyword = asyncHandler(async (req, res) => {
 
   const searchQuery = {
     $or: [
-      { title: { $regex: keyword, $options: "i" } },
-      // { description: { $regex: keyword, $options: "i" } },
-      // { "brand.name": { $regex: keyword, $options: "i" } },
+      { name: { $regex: keyword, $options: "i" } },
+      { brand: { $regex: keyword, $options: "i" } },
+      { sku: { $regex: keyword, $options: "i" } },
     ],
   };
 
-  const count = await Product.countDocuments(searchQuery);
-  const products = await Product.find(searchQuery).limit(limit);
+  const products = await Product.find(searchQuery);
+  const count = products.length;
 
   res.json({ products, total: count });
 });
