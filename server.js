@@ -61,12 +61,12 @@ app.use(
   })
 );
 
-if (process.env.NODE_ENV === "production") {
-  cron.schedule("0 12 * * *", async () => {
-    console.log("⏰ Running 2 AM best-seller update...");
-    await runBestSellerJob();
-  });
-}
+// if (process.env.NODE_ENV === "production") {
+//   cron.schedule("0 12 * * *", async () => {
+//     console.log("⏰ Running 2 AM best-seller update...");
+//     await runBestSellerJob();
+//   });
+// }
 // Routes
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
