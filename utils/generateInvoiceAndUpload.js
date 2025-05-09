@@ -101,7 +101,7 @@ const generateInvoiceAndUpload = (order) => {
     order.order_items.forEach((item) => {
       doc.text(item.name, tableX + 5, y);
       doc.text(item.units.toString(), tableX + 330, y);
-      doc.text(`Rs. ${Number(item.selling_price).toFixed(2)}`, tableX + 430, y);
+      doc.text(`Rs. ${item.selling_price}`, tableX + 430, y);
       y += 20;
     });
 
@@ -116,32 +116,24 @@ const generateInvoiceAndUpload = (order) => {
     doc
       .font("Helvetica-Bold")
       .text("Subtotal", 400, y)
-      .text(`${Number(order.sub_total).toFixed(2)}`, 480, y, {
-        align: "right",
-      });
+      .text(`${order.sub_total}`, 480, y, { align: "right" });
 
     y += 15;
     doc
       .font("Helvetica")
       .text("Shipping", 400, y)
-      .text(
-        `${Number(order.shipping_charges).toFixed(2)} (Flat rate)`,
-        480,
-        y,
-        {
-          align: "right",
-        }
-      );
+      .text(`${order.shipping_charges} (Flat rate)`, 480, y, {
+        align: "right",
+      });
 
     y += 15;
     doc
       .font("Helvetica-Bold")
       .text("Total", 400, y)
       .text(
-        `${
-          Number(order.sub_total).toFixed(2) +
-          Number(order.shipping_charges).toFixed(2)
-        }`,
+        `${(Number(order.sub_total) + Number(order.shipping_charges)).toFixed(
+          2
+        )}`,
         480,
         y,
         { align: "right" }
