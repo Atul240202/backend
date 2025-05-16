@@ -42,6 +42,7 @@ const variationSchema = new mongoose.Schema(
       {
         id: Number,
         name: String,
+        slug: String,
         option: String,
       },
     ],

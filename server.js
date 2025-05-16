@@ -23,6 +23,7 @@ const cookieParser = require("cookie-parser");
 const imageUploadRoute = require("./routes/imageUploadRoute");
 const blogImageUploadRoutes = require("./routes/blogImageUploadRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const variableProductsRoutes = require("./routes/productVariationRoutes");
 const cron = require("node-cron");
 const runBestSellerJob = require("./scripts/updateBestSellers");
 
@@ -85,6 +86,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api", blogImageUploadRoutes);
+app.use("/api/variations", variableProductsRoutes);
 //blogImageUploadRoutes
 // Base route
 app.get("/", (req, res) => {

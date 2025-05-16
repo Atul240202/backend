@@ -23,7 +23,11 @@ async function fetchAndSaveVariations(parentProduct) {
         name: `${parentProduct.name} - ${variation.attributes
           .map((a) => a.option)
           .join(" ")}`,
-        slug: `${parentProduct.slug}-v${variation.id}`,
+        slug: `${parentProduct.slug}-${variation.attributes
+          .map(
+            (a) => `${a.slug}-${a.option.replace(/\s+/g, "-").toLowerCase()}`
+          )
+          .join("-")}`,
         parent_id: productId,
         type: "variation",
         permalink: variation.permalink,
@@ -72,10 +76,10 @@ async function fetchAndSaveVariations(parentProduct) {
       `✅ Stored ${variationMongoIds.length} variations for product ${productId}`
     );
   } catch (err) {
-    console.error(
-      `❌ Error saving variations for product ${productId}:`,
-      err.message
-    );
+    // console.error(
+    //   `❌ Error saving variations for product ${productId}:`,
+    //   err.message
+    // );
   }
 }
 
