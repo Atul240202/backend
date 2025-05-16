@@ -36,17 +36,7 @@ const getDepartmentById = asyncHandler(async (req, res) => {
 // @route   POST /api/department
 // @access  Admin
 const createDepartment = asyncHandler(async (req, res) => {
-  let {
-    id,
-    name,
-    slug,
-    parent,
-    description,
-    display,
-    image,
-    menu_order,
-    count,
-  } = req.body;
+  let { id, name, slug, description, display, image } = req.body;
 
   if (!id) {
     const last = await ProductDepartment.findOne({}).sort({ id: -1 });
@@ -65,12 +55,9 @@ const createDepartment = asyncHandler(async (req, res) => {
     id,
     name,
     slug,
-    parent,
     description,
     display,
     image,
-    menu_order,
-    count,
   });
 
   try {
