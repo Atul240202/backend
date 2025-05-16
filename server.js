@@ -19,6 +19,7 @@ const {
   scheduleTokenRefresh,
   // scheduleFailedIntegrationCheck,
 } = require("./utils/scheduler");
+const departmentRoutes = require("./routes/departmentRoutes");
 const cookieParser = require("cookie-parser");
 const imageUploadRoute = require("./routes/imageUploadRoute");
 const blogImageUploadRoutes = require("./routes/blogImageUploadRoutes");
@@ -82,6 +83,7 @@ app.use("/api/payment/phonepe", phonepeRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api", imageUploadRoute);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/department", departmentRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api", blogImageUploadRoutes);
