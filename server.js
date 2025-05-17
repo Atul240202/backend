@@ -33,6 +33,7 @@ dotenv.config();
 connectDB();
 
 const app = express();
+app.set("trust proxy", true);
 
 // Middleware
 app.use(cookieParser());
@@ -92,7 +93,6 @@ app.use("/api", blogImageUploadRoutes);
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
-
 // Error middleware
 app.use(notFound);
 app.use(errorHandler);
