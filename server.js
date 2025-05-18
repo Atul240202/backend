@@ -26,6 +26,7 @@ const blogImageUploadRoutes = require("./routes/blogImageUploadRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const cron = require("node-cron");
 const runBestSellerJob = require("./scripts/updateBestSellers");
+const sendJobRoutes = require("./routes/sendJobRoutes");
 
 dotenv.config();
 
@@ -88,6 +89,7 @@ app.use("/api/department", departmentRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api", blogImageUploadRoutes);
+app.use("/api/apply-job", sendJobRoutes);
 //blogImageUploadRoutes
 // Base route
 app.get("/", (req, res) => {
