@@ -122,7 +122,7 @@ const generateInvoiceAndUpload = (order) => {
     doc
       .font("Helvetica")
       .text("Shipping", 400, y)
-      .text(`${order.shipping_charges} (Flat rate)`, 480, y, {
+      .text(`${order.shipping_charges}`, 480, y, {
         align: "right",
       });
 
