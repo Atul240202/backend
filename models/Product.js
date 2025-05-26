@@ -70,6 +70,7 @@ const productSchema = new mongoose.Schema({
   parent_id: { type: Number },
   purchase_note: { type: String },
   categories: [{ id: Number, name: String, slug: String }],
+  departments: [{ id: Number, name: String, slug: String }],
   tags: [{ id: Number, name: String, slug: String }],
   images: [
     {

@@ -83,29 +83,56 @@ const getProducts = asyncHandler(async (req, res) => {
   const limit = Number(req.query.limit) || 10;
   const keyword = req.query.keyword || "";
 
-  const searchFilter = keyword
-    ? {
-        $or: [
-          { name: { $regex: keyword, $options: "i" } },
-          { description: { $regex: keyword, $options: "i" } },
-        ],
-      }
-    : {};
-
-  const filter = {
-    ...searchFilter,
+  const matchStage = {
     status: { $ne: "draft" },
   };
 
-  const total = await Product.countDocuments(filter);
-  const products = await Product.find(filter)
-    .limit(limit)
-    .skip(limit * (page - 1));
+  if (keyword) {
+    matchStage.$or = [
+      { brand: { $regex: keyword, $options: "i" } },
+      { name: { $regex: keyword, $options: "i" } },
+    ];
+  }
+
+  const pipeline = [
+    { $match: matchStage },
+    {
+      $addFields: {
+        score: {
+          $cond: [
+            { $regexMatch: { input: "$brand", regex: keyword, options: "i" } },
+            2,
+            {
+              $cond: [
+                {
+                  $regexMatch: { input: "$name", regex: keyword, options: "i" },
+                },
+                1,
+                0,
+              ],
+            },
+          ],
+        },
+      },
+    },
+    { $sort: { score: -1 } },
+    { $skip: limit * (page - 1) },
+    { $limit: limit },
+  ];
+
+  const countPipeline = [{ $match: matchStage }, { $count: "total" }];
+
+  const [products, countResult] = await Promise.all([
+    Product.aggregate(pipeline),
+    Product.aggregate(countPipeline),
+  ]);
+
+  const total = countResult[0]?.total || 0;
 
   res.json({
     products,
     page,
-    pages: Math.ceil(total / limit), // Renamed here
+    pages: Math.ceil(total / limit),
     total,
   });
 });

@@ -19,6 +19,7 @@ const {
   scheduleTokenRefresh,
   // scheduleFailedIntegrationCheck,
 } = require("./utils/scheduler");
+const departmentRoutes = require("./routes/departmentRoutes");
 const cookieParser = require("cookie-parser");
 const imageUploadRoute = require("./routes/imageUploadRoute");
 const blogImageUploadRoutes = require("./routes/blogImageUploadRoutes");
@@ -26,6 +27,7 @@ const contactRoutes = require("./routes/contactRoutes");
 const variableProductsRoutes = require("./routes/productVariationRoutes");
 const cron = require("node-cron");
 const runBestSellerJob = require("./scripts/updateBestSellers");
+const sendJobRoutes = require("./routes/sendJobRoutes");
 
 dotenv.config();
 
@@ -33,6 +35,7 @@ dotenv.config();
 connectDB();
 
 const app = express();
+app.set("trust proxy", true);
 
 // Middleware
 app.use(cookieParser());
@@ -83,16 +86,17 @@ app.use("/api/payment/phonepe", phonepeRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api", imageUploadRoute);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/department", departmentRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api", blogImageUploadRoutes);
 app.use("/api/variations", variableProductsRoutes);
+app.use("/api/apply-job", sendJobRoutes);
 //blogImageUploadRoutes
 // Base route
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
-
 // Error middleware
 app.use(notFound);
 app.use(errorHandler);
