@@ -24,4 +24,4 @@ const runJob = async () => {
   }
 };
 
-// runJob();
+runJob();
