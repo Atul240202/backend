@@ -24,6 +24,7 @@ const cookieParser = require("cookie-parser");
 const imageUploadRoute = require("./routes/imageUploadRoute");
 const blogImageUploadRoutes = require("./routes/blogImageUploadRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const variableProductsRoutes = require("./routes/productVariationRoutes");
 const cron = require("node-cron");
 const runBestSellerJob = require("./scripts/updateBestSellers");
 const sendJobRoutes = require("./routes/sendJobRoutes");
@@ -89,6 +90,7 @@ app.use("/api/department", departmentRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api", blogImageUploadRoutes);
+app.use("/api/variations", variableProductsRoutes);
 app.use("/api/apply-job", sendJobRoutes);
 //blogImageUploadRoutes
 // Base route
