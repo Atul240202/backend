@@ -24,3 +24,10 @@ dist-ssr
 *.sw?
 .env
 .env.sample
+# AWS and sensitive logs
+scripts/migration_log.txt
+scripts/checkpoint.log
+scripts/migrateImageToAws.js
+scripts/dedupeCheckpoint.js
+# Temporary download folder for image processing
+scripts/temp/
