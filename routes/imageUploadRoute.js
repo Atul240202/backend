@@ -17,16 +17,21 @@ router.post("/upload-image", upload.single("image"), async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: "No image uploaded" });
+    const imageId = req.body.imageId;
+    if (!imageId) {
+      return res.status(400).json({ error: "Missing imageId" });
+    }
 
     const extension = file.originalname.split(".").pop();
-    const fileName = `products/${uuidv4()}.${extension}`;
+    const imageName = `${uuidv4()}.${extension}`;
+    const fileName = `products_image/${imageId}/${imageName}`;
 
     const params = {
       Bucket: process.env.S3_BUCKET_NAME_IMAGE,
       Key: fileName,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: "public-read", // Optional: makes image public
+      // ACL: "public-read",
     };
 
     await s3.putObject(params).promise();

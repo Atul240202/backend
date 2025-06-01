@@ -73,7 +73,7 @@ const productSchema = new mongoose.Schema({
   tags: [{ id: Number, name: String, slug: String }],
   images: [
     {
-      id: Number,
+      id: String,
       date_created: String,
       date_created_gmt: String,
       date_modified: String,
