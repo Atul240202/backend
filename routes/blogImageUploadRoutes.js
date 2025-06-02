@@ -39,7 +39,7 @@ router.post("/upload-blog-image", upload.single("image"), async (req, res) => {
 
     await s3.putObject(params).promise();
 
-    const imageUrl = `https://${process.env.S3_BLOG_BUCKET_NAME_IMAGE}.s3.${process.env.BLOG_AWS_REGION}.amazonaws.com/${fileName}`;
+    const imageUrl = `https://${process.env.S3_BLOG_BUCKET_NAME_IMAGE}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
     res.status(200).json({ url: imageUrl });
   } catch (error) {
     console.error("Blog Image Upload Error:", error);
