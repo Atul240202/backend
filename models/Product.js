@@ -85,7 +85,12 @@ const productSchema = new mongoose.Schema({
   ],
   attributes: [{ id: Number, name: String, options: [String] }],
   default_attributes: [{ name: String, option: String }],
-  variations: [{ type: mongoose.Schema.Types.ObjectId, ref: "MainProducts" }],
+  variations: [
+    {
+      product: { type: mongoose.Schema.Types.ObjectId, ref: "MainProducts" },
+      attributes: [{ key: String, value: String }],
+    },
+  ],
   grouped_products: [{ type: Number }],
   menu_order: { type: Number },
   price_html: { type: String },
