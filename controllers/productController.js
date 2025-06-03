@@ -36,6 +36,7 @@ const createProduct = asyncHandler(async (req, res) => {
 const updateProduct = asyncHandler(async (req, res) => {
   const productId = req.params.id;
   const updates = req.body;
+  console.log("Updating product with ID:", productId);
 
   const product = await Product.findOne({ id: productId });
 
@@ -45,13 +46,25 @@ const updateProduct = asyncHandler(async (req, res) => {
       message: "Product not found",
     });
   }
-
+  console.log("Found product:", product);
   Object.assign(product, updates);
   product.date_modified = new Date().toISOString();
   product.date_modified_gmt = new Date().toUTCString();
-
-  const updatedProduct = await product.save();
-  res.json({ success: true, product: updatedProduct });
+  console.log("Product after setting modified date:", product);
+  try {
+    const updatedProduct = await product.save();
+    console.log("Updated product:", updatedProduct);
+    res.json({ success: true, product: updatedProduct });
+  } catch (error) {
+    console.error("Error while saving product:", error);
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to save product",
+        error: error.message,
+      });
+  }
 });
 
 // @desc    Delete product
