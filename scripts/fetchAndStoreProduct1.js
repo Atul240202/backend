@@ -144,7 +144,6 @@ async function saveProgress(page, fetchedProducts) {
       PROGRESS_FILE,
       JSON.stringify({ page, fetchedProducts, lastUpdated: new Date() })
     );
-    console.log(`Progress saved: Page ${page}, Products ${fetchedProducts}`);
   } catch (error) {
     console.error("Error saving progress:", error.message);
   }
@@ -155,12 +154,8 @@ async function loadProgress() {
   try {
     const data = await fs.readFile(PROGRESS_FILE, "utf8");
     const progress = JSON.parse(data);
-    console.log(
-      `Loaded progress: Page ${progress.page}, Products ${progress.fetchedProducts}`
-    );
     return progress;
   } catch (error) {
-    console.log("No progress file found or error reading it. Starting fresh.");
     return { page: 1, fetchedProducts: 0 };
   }
 }
@@ -312,16 +307,11 @@ async function fetchAndStoreProductsResumable() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("Connected to MongoDB");
 
     // Load progress if available
     const progress = await loadProgress();
     let page = progress.page;
     let fetchedProducts = progress.fetchedProducts;
-
-    console.log(
-      `Resuming from page ${page} with ${fetchedProducts} products already fetched`
-    );
 
     // Set up retry mechanism
     const MAX_RETRIES = 3;
@@ -329,8 +319,6 @@ async function fetchAndStoreProductsResumable() {
 
     while (fetchedProducts < TARGET_PRODUCTS) {
       const url = `${BASE_URL}?consumer_key=${CONSUMER_KEY}&consumer_secret=${CONSUMER_SECRET}&per_page=${PER_PAGE}&page=${page}`;
-      console.log(`Fetching page ${page}...`);
-
       let retries = 0;
       let success = false;
 
@@ -346,7 +334,6 @@ async function fetchAndStoreProductsResumable() {
           const products = response.data;
 
           if (products.length === 0) {
-            console.log("No more products available.");
             break; // Stop if no more products are available
           }
 
@@ -375,9 +362,6 @@ async function fetchAndStoreProductsResumable() {
 
             for (const parent of variableProducts) {
               if (variationProgress.has(parent.id)) {
-                console.log(
-                  `⏩ Variations already saved for product ${parent.id}, skipping...`
-                );
                 continue;
               }
 
@@ -385,12 +369,6 @@ async function fetchAndStoreProductsResumable() {
               variationProgress.add(parent.id);
               await saveVariationProgress(variationProgress);
             }
-
-            console.log(
-              `${newProducts.length} new products stored in MongoDB (${
-                products.length - newProducts.length
-              } already existed)`
-            );
           } else {
             console.log(
               `All ${products.length} products already exist in the database. Skipping.`

@@ -4,13 +4,10 @@ const generateXVerify = (base64Payload, saltKey) => {
   const string = base64Payload + "/pg/v1/pay" + saltKey;
   const sha256 = crypto.createHash("sha256").update(string).digest("hex");
   const xVerify = sha256 + "###" + process.env.PHONEPE_SALT_INDEX;
-  console.log("🔐 Generated X-VERIFY:", xVerify);
   return xVerify;
 };
 
 const processPhonePePayment = async (orderData, transactionId) => {
-  console.log("🔁 processPhonePePayment called");
-
   const payload = {
     merchantId: process.env.PHONEPE_MERCHANT_ID,
     merchantTransactionId: transactionId,
@@ -31,8 +28,6 @@ const processPhonePePayment = async (orderData, transactionId) => {
     },
   };
 
-  console.log("🧾 Final payload:", JSON.stringify(payload, null, 2));
-
   // Validations
   if (!payload.merchantId || payload.merchantId.length > 38)
     throw new Error("❌ Invalid merchantId");
@@ -51,14 +46,8 @@ const processPhonePePayment = async (orderData, transactionId) => {
     throw new Error("❌ Amount must be greater than 100 paise (₹1)");
 
   const base64Payload = Buffer.from(JSON.stringify(payload)).toString("base64");
-  console.log("📤 base64Payload:", base64Payload);
 
   const xVerify = generateXVerify(base64Payload, process.env.PHONEPE_SALT_KEY);
-
-  console.log(
-    "🌐 Sending payment request to:",
-    process.env.PHONEPE_PAYMENT_URL
-  );
 
   const response = await fetch(process.env.PHONEPE_PAYMENT_URL, {
     method: "POST",
@@ -70,7 +59,6 @@ const processPhonePePayment = async (orderData, transactionId) => {
   });
 
   const text = await response.text();
-  console.log("📨 Raw response from PhonePe:", text);
 
   try {
     const data = JSON.parse(text);
@@ -80,7 +68,6 @@ const processPhonePePayment = async (orderData, transactionId) => {
       throw new Error(data.message || "PhonePe request failed");
     }
 
-    console.log("✅ Payment initiated successfully");
     return {
       redirectUrl: data.data.instrumentResponse.redirectInfo.url,
       transactionId,

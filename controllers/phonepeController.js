@@ -5,12 +5,8 @@ const {
 } = require("../controllers/finalOrderController");
 
 exports.verifyPhonePePayment = async (req, res) => {
-  console.log("🔍 verifyPhonePePayment called");
-
   try {
     const { transactionId } = req.params;
-
-    console.log("🔑 transactionId received:", transactionId);
 
     const finalOrder = await FinalOrder.findOne({
       phonepeTransactionId: transactionId,
@@ -35,8 +31,6 @@ exports.verifyPhonePePayment = async (req, res) => {
         .digest("hex") + `###${saltIndex}`;
 
     const phonePeStatusUrl = `${process.env.PHONEPE_API_URL}${statusPath}`;
-    console.log("🌐 Calling PhonePe status URL:", phonePeStatusUrl);
-    console.log("🔐 X-VERIFY:", xVerify);
 
     const response = await fetch(phonePeStatusUrl, {
       method: "GET",
@@ -49,17 +43,11 @@ exports.verifyPhonePePayment = async (req, res) => {
     });
 
     const result = await response.json();
-    console.log(
-      "📲 PhonePe response received:",
-      JSON.stringify(result, null, 2)
-    );
 
     const status = result?.data?.state;
     const code = result?.code;
 
     if (status === "COMPLETED" && code === "PAYMENT_SUCCESS") {
-      console.log("✅ Payment confirmed. Finalizing order...");
-
       const orderData = {
         ...finalOrder.toObject(),
         user: finalOrder.user,
@@ -73,7 +61,6 @@ exports.verifyPhonePePayment = async (req, res) => {
       );
 
       if (finalResult.success) {
-        console.log("🎉 Order finalized successfully");
         return res.status(200).json({
           success: true,
           status: "success",
@@ -90,7 +77,6 @@ exports.verifyPhonePePayment = async (req, res) => {
         message: "Payment failed",
       });
     } else {
-      console.log("⏳ Payment still pending...");
       return res.status(202).json({
         success: false,
         status: "pending",

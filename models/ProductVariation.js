@@ -6,6 +6,11 @@ const variationSchema = new mongoose.Schema(
     name: String,
     slug: String,
     parent_id: Number,
+    parent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "MainProducts",
+    },
+
     type: { type: String, default: "variation" },
     permalink: String,
     description: String,
@@ -38,6 +43,7 @@ const variationSchema = new mongoose.Schema(
     shipping_class: String,
     shipping_class_id: Number,
     image: [Object],
+    images: [Object],
     attributes: [
       {
         id: Number,
@@ -47,6 +53,7 @@ const variationSchema = new mongoose.Schema(
       },
     ],
     menu_order: Number,
+    barcode: String,
     meta_data: [Object],
     _links: Object,
   },

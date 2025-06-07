@@ -1,13 +1,13 @@
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/Product");
 const BestSellerCache = require("../models/BestSellerCache");
-
+const ProductVariation = require("../models/ProductVariation");
 // @desc    Add new product
 // @route   POST /api/products
 // @access  Private/Admin
 const createProduct = asyncHandler(async (req, res) => {
   const data = req.body;
-
+  const isVariable = data.type === "variable";
   // Validate essential fields
   if (!data.name || !data.price) {
     return res.status(400).json({
@@ -22,12 +22,40 @@ const createProduct = asyncHandler(async (req, res) => {
   const product = new Product({
     ...data,
     id: newId,
+    variations: [],
     date_created: new Date().toISOString(),
     date_created_gmt: new Date().toUTCString(),
   });
 
   const createdProduct = await product.save();
-  res.status(201).json({ success: true, product: createdProduct });
+
+  let createdVariations = [];
+  if (isVariable && Array.isArray(data.variations)) {
+    const lastVariation = await ProductVariation.findOne().sort({ id: -1 });
+    let variationIdCounter = lastVariation ? lastVariation.id + 1 : 100001;
+
+    const variationsWithParentId = data.variations.map((variation) => {
+      const variationWithId = {
+        ...variation,
+        parent_id: createdProduct.id,
+        id: variationIdCounter++, // Assign incremental custom ID
+        date_created: new Date().toISOString(),
+        date_created_gmt: new Date().toUTCString(),
+      };
+      return variationWithId;
+    });
+
+    createdVariations = await ProductVariation.insertMany(
+      variationsWithParentId
+    );
+    createdProduct.variations = createdVariations.map((v) => v.id);
+    await createdProduct.save();
+  }
+  res.status(201).json({
+    success: true,
+    product: createdProduct,
+    variations: createdVariations,
+  });
 });
 
 // @desc    Update product
@@ -36,8 +64,6 @@ const createProduct = asyncHandler(async (req, res) => {
 const updateProduct = asyncHandler(async (req, res) => {
   const productId = req.params.id;
   const updates = req.body;
-  console.log("Updating product with ID:", productId);
-
   const product = await Product.findOne({ id: productId });
 
   if (!product) {
@@ -46,24 +72,42 @@ const updateProduct = asyncHandler(async (req, res) => {
       message: "Product not found",
     });
   }
-  console.log("Found product:", product);
-  Object.assign(product, updates);
+
+  const { variations, ...otherUpdates } = updates;
+  Object.assign(product, otherUpdates);
   product.date_modified = new Date().toISOString();
   product.date_modified_gmt = new Date().toUTCString();
-  console.log("Product after setting modified date:", product);
+
   try {
+    if (updates.type === "variable" && Array.isArray(variations)) {
+      const variationIds = [];
+      for (const variation of variations) {
+        if (variation.id) {
+          await ProductVariation.findOneAndUpdate(
+            { id: variation.id },
+            variation,
+            { new: true }
+          );
+          variationIds.push(variation.id);
+        } else {
+          const created = await ProductVariation.create({
+            ...variation,
+            parent_id: product.id,
+          });
+          variationIds.push(created.id);
+        }
+      }
+      product.variations = variationIds;
+    }
+
     const updatedProduct = await product.save();
-    console.log("Updated product:", updatedProduct);
     res.json({ success: true, product: updatedProduct });
   } catch (error) {
-    console.error("Error while saving product:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to save product",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Failed to save product",
+      error: error.message,
+    });
   }
 });
 
@@ -80,6 +124,10 @@ const deleteProduct = asyncHandler(async (req, res) => {
       success: false,
       message: "Product not found",
     });
+  }
+
+  if (product.type === "variable") {
+    await ProductVariation.deleteMany({ parent_id: productId });
   }
 
   res.json({

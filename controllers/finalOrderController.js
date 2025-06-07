@@ -226,15 +226,10 @@ exports.createFinalOrderFromTransaction = async (
   transactionId,
   result
 ) => {
-  console.log("🔁 createFinalOrderFromTransaction called");
-  console.log("📦 orderData:", JSON.stringify(orderData, null, 2));
-  console.log("🔑 transactionId:", transactionId);
-  console.log("📲 result from PhonePe:", JSON.stringify(result, null, 2));
 
   const finalOrder = await FinalOrder.findOne({
     phonepeTransactionId: transactionId,
   });
-  console.log("🔍 finalOrder found:", finalOrder);
 
   if (!finalOrder) {
     console.error("❌ Final order not found for transaction");
@@ -242,11 +237,9 @@ exports.createFinalOrderFromTransaction = async (
   }
 
   if (finalOrder.status === "payment confirmed") {
-    console.log("✅ Final order already confirmed");
     return finalOrder;
   }
 
-  console.log("🔄 Updating finalOrder status to 'payment confirmed'");
   finalOrder.status = "payment confirmed";
   finalOrder.phonepeApiResults = {
     success: result.success,
@@ -256,17 +249,12 @@ exports.createFinalOrderFromTransaction = async (
   };
 
   try {
-    console.log("📦 Calling handleShiprocketAndInvoice...");
     const invoiceUrl = await handleShiprocketAndInvoice(orderData, finalOrder);
-    console.log("🧾 Invoice URL:", invoiceUrl);
 
-    console.log("📈 Incrementing product sales...");
     await incrementProductSales(orderData.order_items);
 
-    console.log("📧 Sending order confirmation email...");
     await sendOrderConfirmationMail(orderData, finalOrder, invoiceUrl);
 
-    console.log("✅ Final order created successfully");
     return {
       success: true,
       message: "Order created successfully",
@@ -284,31 +272,20 @@ exports.createFinalOrderFromTransaction = async (
 
 //For creating order (courier logic is currently not in use, for making it in use kindly make ASSIGN_COURIER flag true in env)
 exports.createFinalOrder = async (req, res) => {
-  console.log("🔁 createFinalOrder called");
 
   try {
     const orderData = req.body;
     const userId = req.user.id;
-    console.log("🔎 Final order dimensions before saving:", {
-      length: orderData.length,
-      breadth: orderData.breadth,
-      height: orderData.height,
-      weight: orderData.weight,
-    });
+
     const finalOrder = await createOrderRecord(orderData, userId);
 
     if (orderData.payment_method === "Prepaid") {
       const transactionId = finalOrder.phonepeTransactionId;
-      console.log(
-        "💳 Prepaid order detected. Initiating PhonePe with transactionId:",
-        transactionId
-      );
 
       const { redirectUrl } = await processPhonePePayment(
         finalOrder,
         transactionId
       );
-      console.log("🔗 redirectUrl from PhonePe:", redirectUrl);
 
       return res.status(202).json({
         success: true,
@@ -319,17 +296,12 @@ exports.createFinalOrder = async (req, res) => {
       });
     }
 
-    console.log("🚚 Handling Shiprocket & Invoice for COD order...");
     const invoiceUrl = await handleShiprocketAndInvoice(orderData, finalOrder);
-    console.log("🧾 Invoice URL generated:", invoiceUrl);
 
-    console.log("📈 Incrementing product sales...");
     await incrementProductSales(orderData.order_items);
 
-    console.log("📧 Sending order confirmation email...");
     await sendOrderConfirmationMail(orderData, finalOrder, invoiceUrl);
 
-    console.log("✅ Final COD order processed successfully");
     return res.status(201).json({
       success: true,
       data: finalOrder,
@@ -383,14 +355,7 @@ async function createOrderRecord(orderData, userId) {
 
 async function handleShiprocketAndInvoice(orderData, finalOrder) {
   try {
-    console.log("📦 Shiprocket package data:", {
-      length: orderData.length,
-      breadth: orderData.breadth,
-      height: orderData.height,
-      weight: orderData.weight,
-    });
     const shipRocketOrderData = buildShipRocketOrderData(orderData);
-    console.log("🛫 Final payload to ShipRocket:", shipRocketOrderData);
 
     const shipRocketResponse = await shipRocketController.createOrder(
       shipRocketOrderData
