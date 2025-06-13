@@ -226,7 +226,6 @@ exports.createFinalOrderFromTransaction = async (
   transactionId,
   result
 ) => {
-
   const finalOrder = await FinalOrder.findOne({
     phonepeTransactionId: transactionId,
   });
@@ -272,7 +271,6 @@ exports.createFinalOrderFromTransaction = async (
 
 //For creating order (courier logic is currently not in use, for making it in use kindly make ASSIGN_COURIER flag true in env)
 exports.createFinalOrder = async (req, res) => {
-
   try {
     const orderData = req.body;
     const userId = req.user.id;
@@ -504,12 +502,17 @@ async function sendOrderConfirmationMail(orderData, finalOrder, invoiceUrl) {
           )}</span></p>`
         : ""
     }
-    <p style="font-size: 18px; color: #333; font-weight: bold;">Order Total: <span style="float: right;">₹${
-      parseFloat(orderData.sub_total) +
-      (parseFloat(orderData.shipping_charges) || 0) +
-      (parseFloat(orderData.transaction_charges) || 0) -
-      (parseFloat(orderData.total_discount) || 0)
-    }</span></p>
+    <p style="font-size: 18px; color: #333; font-weight: bold">
+      Order Total: 
+      <span style="float: right">
+        ₹${(
+          parseFloat(orderData.sub_total) +
+          (parseFloat(orderData.shipping_charges) || 0) +
+          (parseFloat(orderData.transaction_charges) || 0) -
+          (parseFloat(orderData.total_discount) || 0)
+        ).toFixed(2)}
+      </span>
+    </p>
     <p style="font-size: 16px; color: #555; margin-top: 30px;">You can download your invoice here: <a href="${invoiceUrl}" style="color: #007bff; text-decoration: none;">View Invoice</a></p>
     <p style="font-size: 16px; color: #555;"><strong>You can stay updated about your order from the Order section on your account page.</strong></p>
     <p style="font-size: 16px; color: #555; margin-top: 30px;">Thank you again for choosing Industrywaala!</p>
