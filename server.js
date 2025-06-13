@@ -58,6 +58,7 @@ app.use(
       "https://accounts.google.com",
       "https://ecom-admin-panel-one.vercel.app",
       "https://ecom-backend-e5fz.onrender.com",
+      "https://backend-xx88.onrender.com",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
